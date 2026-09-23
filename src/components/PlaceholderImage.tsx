@@ -10,20 +10,22 @@ interface Props {
   borderRadius?: number;
 }
 
-/** Recipe photo if one is available (a bundled seed-dish asset, or a photo the
- * user attached) — otherwise the same diagonal placeholder swatch the design
- * prototype uses everywhere. */
+/** Recipe photo if one is available (a photo the user attached, or a bundled
+ * seed-dish asset) — otherwise the same diagonal placeholder swatch the
+ * design prototype uses everywhere. `uri` wins over `source` so a custom
+ * photo the user uploads for a seed dish actually overrides its bundled art
+ * instead of being silently shadowed by it. */
 const fillStyle = { width: '100%' as const, height: '100%' as const };
 
 export function PlaceholderImage({ uri, source, style, borderRadius = 0 }: Props) {
-  if (source) {
-    return (
-      <Image source={source} style={[fillStyle, { borderRadius }, style] as StyleProp<any>} resizeMode="cover" />
-    );
-  }
   if (uri) {
     return (
       <Image source={{ uri }} style={[fillStyle, { borderRadius }, style] as StyleProp<any>} resizeMode="cover" />
+    );
+  }
+  if (source) {
+    return (
+      <Image source={source} style={[fillStyle, { borderRadius }, style] as StyleProp<any>} resizeMode="cover" />
     );
   }
   return (

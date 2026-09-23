@@ -8,7 +8,7 @@ export const supabaseConfigured = !!(url && anonKey);
 
 if (!supabaseConfigured) {
   console.warn(
-    '⚠️  EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY are not set — auth, cloud sync, and household sharing are disabled until mobile/.env has real values.',
+    '⚠️  EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY are not set — auth, cloud sync, and kitchen sharing are disabled until mobile/.env has real values.',
   );
 }
 

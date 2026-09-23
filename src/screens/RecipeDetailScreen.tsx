@@ -10,13 +10,13 @@ import { PlaceholderImage } from '../components/PlaceholderImage';
 import { BackChevronIcon, HeartIcon, ShareIcon, BookmarkIcon } from '../components/Icon';
 import { PillButton } from '../components/PillButton';
 import { Recipe, SettingsState } from '../types/models';
-import { getRecipe, saveRecipe } from '../storage/recipes';
+import { getRecipe, saveRecipe, listRecipes } from '../storage/recipes';
 import { addMissingIngredientsToGrocery } from '../storage/grocery';
 import { getSettings } from '../storage/settings';
 import { scaleIngredient } from '../utils/units';
-import { chatMessage, getRecipeStory } from '../api/client';
+import { chatMessage, getRecipeStory, generateRecipePhoto } from '../api/client';
 import { shareRecipe as shareRecipeRemote, unshareRecipe as unshareRecipeRemote } from '../lib/sync';
-import { canAccessRecipe } from '../utils/subscription';
+import { canAccessRecipe, isSubscriptionActive } from '../utils/subscription';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'RecipeDetail'>;
 
@@ -42,15 +42,18 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
   const [sharing, setSharing] = useState(false);
   const [storyError, setStoryError] = useState<string | null>(null);
   const [settings, setSettingsState] = useState<SettingsState | null>(null);
+  const [allRecipes, setAllRecipes] = useState<Recipe[]>([]);
+  const [generatingPhoto, setGeneratingPhoto] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       let mounted = true;
       (async () => {
-        const [r, settings] = await Promise.all([getRecipe(recipeId), getSettings()]);
+        const [r, settings, all] = await Promise.all([getRecipe(recipeId), getSettings(), listRecipes()]);
         if (!mounted || !r) return;
         setRecipe(r);
         setSettingsState(settings);
+        setAllRecipes(all);
         setServings(r.servingsBase);
         setUnit(settings.unit);
         setHaveFlags(Object.fromEntries(r.ingredients.map((i) => [i.name, !!i.have])));
@@ -72,7 +75,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
     );
   }
 
-  const locked = !canAccessRecipe(recipe, settings);
+  const locked = !canAccessRecipe(recipe, settings, allRecipes);
 
   const ratio = servings / recipe.servingsBase;
 
@@ -82,7 +85,18 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
     await saveRecipe(next);
   };
 
+  /** Shows the upsell and returns false if this account isn't subscribed. */
+  const requirePremium = (message: string): boolean => {
+    if (isSubscriptionActive(settings)) return true;
+    Alert.alert('Premium feature', message, [
+      { text: 'Not now', style: 'cancel' },
+      { text: 'Go Premium', onPress: () => navigation.navigate('Paywall') },
+    ]);
+    return false;
+  };
+
   const shareRecipe = async () => {
+    if (!requirePremium('Sharing recipes is available to UlamHub Premium members. Subscribe to share this recipe with anyone.')) return;
     setSharing(true);
     try {
       const rowId = await shareRecipeRemote(recipe);
@@ -92,12 +106,12 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
         await saveRecipe(next);
         const url = Linking.createURL(`recipe/${rowId}`);
         await Share.share({
-          message: `${recipe.name} (${recipe.country} · ${recipe.type}) — open it in Ulam: ${url}`,
+          message: `${recipe.name} (${recipe.country} · ${recipe.type}) — open it in UlamHub: ${url}`,
           url, // iOS uses this field directly when present
         });
       } else {
         // Not signed in (or Supabase isn't configured) — no cloud copy to link to yet.
-        await Share.share({ message: `${recipe.name} (${recipe.country} · ${recipe.type}) — check it out on Ulam!` });
+        await Share.share({ message: `${recipe.name} (${recipe.country} · ${recipe.type}) — check it out on UlamHub!` });
       }
     } finally {
       setSharing(false);
@@ -118,6 +132,47 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
           await saveRecipe(next);
         },
       },
+    ]);
+  };
+
+  const pickPhoto = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Permission needed', 'Photo library access is required to add a photo.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7, allowsEditing: true, aspect: [4, 3] });
+    if (result.canceled || !result.assets[0]?.uri) return;
+    const next = { ...recipe, photoUri: result.assets[0].uri };
+    setRecipe(next);
+    await saveRecipe(next);
+  };
+
+  const generatePhoto = async () => {
+    if (!requirePremium('Generating a photo with AI is available to UlamHub Premium members.')) return;
+    setGeneratingPhoto(true);
+    try {
+      const { imageBase64 } = await generateRecipePhoto({
+        name: recipe.name,
+        country: String(recipe.country),
+        type: recipe.type,
+        ingredients: recipe.ingredients.map((i) => i.name).filter(Boolean),
+      });
+      const next = { ...recipe, photoUri: `data:image/png;base64,${imageBase64}` };
+      setRecipe(next);
+      await saveRecipe(next);
+    } catch (e: any) {
+      Alert.alert('Could not generate photo', e?.message ?? 'Something went wrong — please try again.');
+    } finally {
+      setGeneratingPhoto(false);
+    }
+  };
+
+  const changePhoto = () => {
+    Alert.alert('Recipe photo', undefined, [
+      { text: 'Choose from library', onPress: pickPhoto },
+      { text: 'Generate with AI', onPress: generatePhoto },
+      { text: 'Cancel', style: 'cancel' },
     ]);
   };
 
@@ -146,6 +201,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
       setFlavorTip(null);
       return;
     }
+    if (!requirePremium('Kitchen AI flavor tips are available to UlamHub Premium members.')) return;
     setFlavorLoading(true);
     try {
       const flavorSummary = recipe.flavorBalance.map((a) => `${a.label}: ${a.val}/100`).join(', ');
@@ -165,6 +221,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
       setStoryOpen(false);
       return;
     }
+    if (!recipe.story && !requirePremium('Recipe Story is available to UlamHub Premium members.')) return;
     setStoryOpen(true);
     if (recipe.story) return;
     setStoryLoading(true);
@@ -201,11 +258,25 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
               <BackChevronIcon />
             </Pressable>
             <View style={{ flexDirection: 'row', gap: 10 }}>
+              <Pressable onPress={changePhoto} disabled={generatingPhoto} style={styles.circleBtn}>
+                {generatingPhoto ? <ActivityIndicator size="small" color={colors.ink} /> : <Text style={{ fontSize: 16 }}>📷</Text>}
+              </Pressable>
               <Pressable onPress={toggleFavorite} style={styles.circleBtn}>
                 <HeartIcon color={recipe.favorite ? colors.coral : '#C4CBB8'} />
               </Pressable>
               <Pressable onPress={shareRecipe} disabled={sharing} style={styles.circleBtn}>
-                {sharing ? <ActivityIndicator size="small" color={colors.ink} /> : <ShareIcon />}
+                {sharing ? (
+                  <ActivityIndicator size="small" color={colors.ink} />
+                ) : (
+                  <>
+                    <ShareIcon />
+                    {!isSubscriptionActive(settings) && (
+                      <View style={styles.shareLockBadge}>
+                        <Text style={{ fontSize: 9 }}>🔒</Text>
+                      </View>
+                    )}
+                  </>
+                )}
               </Pressable>
             </View>
           </View>
@@ -422,6 +493,11 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
               <BookmarkIcon color={recipe.favorite ? colors.tealLink : colors.ink} />
             </Pressable>
             <PillButton label="🍳 Start cooking" onPress={() => navigation.navigate('CookMode', { recipeId })} style={{ flex: 1 }} />
+            {recipe.sourceUrl && (
+              <Pressable onPress={() => Linking.openURL(recipe.sourceUrl!)} style={[styles.sourceBtn, shadow.soft]}>
+                <Text style={{ fontSize: 16 }}>🔗</Text>
+              </Pressable>
+            )}
           </>
         )}
       </View>
@@ -448,6 +524,19 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.92)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  shareLockBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
   },
   sheet: { backgroundColor: colors.screenBg, borderRadius: radii.xxl, marginTop: -24, padding: 20, paddingTop: 22 },
   badgeRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
@@ -532,4 +621,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.screenBg,
   },
   saveBtn: { width: 64, height: 56, borderRadius: radii.lg, borderWidth: 1.5, borderColor: colors.borderMuted, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
+  sourceBtn: { width: 48, height: 48, borderRadius: radii.lg, borderWidth: 1.5, borderColor: colors.borderMuted, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
 });

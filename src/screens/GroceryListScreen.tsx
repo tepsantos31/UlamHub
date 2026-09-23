@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, Pressable, TextInput, Alert, Share, StyleSheet } from 'react-native';
+import { View, Text, Pressable, TextInput, Alert, Share, Linking, StyleSheet } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, fonts, radii, shadow } from '../theme/theme';
@@ -20,6 +20,7 @@ export function GroceryListScreen() {
   const navigation = useNavigation<Nav>();
   const [groups, setGroups] = useState<GroceryGroup[]>([]);
   const [diaspora, setDiaspora] = useState(false);
+  const [homeCuisine, setHomeCuisine] = useState('');
   const [manualName, setManualName] = useState('');
   const [manualQty, setManualQty] = useState('');
   const [showManual, setShowManual] = useState(false);
@@ -31,6 +32,7 @@ export function GroceryListScreen() {
         const g = await regenerateFromPlan(plan, recipes);
         setGroups(g);
         setDiaspora(onboarding.quiz.diaspora);
+        setHomeCuisine(onboarding.quiz.countries[0] ?? '');
       })();
     }, []),
   );
@@ -52,7 +54,15 @@ export function GroceryListScreen() {
 
   const shareList = () => {
     const lines = groups.flatMap((g) => [`${g.name}:`, ...g.items.map((it) => `  ${it.checked ? '✓' : '•'} ${it.n} ${it.q}`.trim())]);
-    Share.share({ message: lines.join('\n') || 'My Ulam grocery list is empty right now.' });
+    Share.share({ message: lines.join('\n') || 'My UlamHub grocery list is empty right now.' });
+  };
+
+  const findNearestStore = () => {
+    const query = homeCuisine ? `${homeCuisine} grocery store` : 'international grocery store';
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+    Linking.openURL(url).catch(() => {
+      Alert.alert('Could not open Maps', "Your device doesn't seem to have a maps app or browser available.");
+    });
   };
 
   const onAddManual = async () => {
@@ -93,10 +103,7 @@ export function GroceryListScreen() {
                 {'  '}
               </Text>
             ))}
-            <Text
-              style={{ color: colors.tealLink, fontFamily: fonts.bodyBold }}
-              onPress={() => Alert.alert('Store locator', 'This would open a map of nearby specialty grocery stores.')}
-            >
+            <Text style={{ color: colors.tealLink, fontFamily: fonts.bodyBold }} onPress={findNearestStore}>
               Find nearest specialty store →
             </Text>
           </Text>

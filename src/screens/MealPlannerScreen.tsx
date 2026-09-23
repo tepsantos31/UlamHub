@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, Pressable, Modal, FlatList, Alert, StyleSheet } from 'react-native';
+import { View, Text, Pressable, Modal, FlatList, StyleSheet } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, fonts, radii, shadow } from '../theme/theme';
@@ -22,7 +22,6 @@ export function MealPlannerScreen() {
   const navigation = useNavigation<Nav>();
   const [plan, setPlan] = useState<PlanDay[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [view, setView] = useState<'week' | 'month'>('week');
   const [picker, setPicker] = useState<{ dayIndex: number; slot: MealSlot } | null>(null);
 
   const reload = useCallback(async () => {
@@ -53,18 +52,19 @@ export function MealPlannerScreen() {
     setPicker(null);
   };
 
+  const clearSlot = async () => {
+    if (!picker) return;
+    const next = await fillSlot(picker.dayIndex, picker.slot, null);
+    setPlan(next);
+    setPicker(null);
+  };
+
+  const currentPickerValue = picker ? plan[picker.dayIndex]?.[picker.slot] : null;
+
   return (
     <Screen>
       <View style={styles.headerRow}>
         <Text style={styles.title}>Meal Planner</Text>
-        <View style={styles.segment}>
-          <Pressable onPress={() => setView('week')} style={[styles.segmentBtn, view === 'week' && styles.segmentBtnActive]}>
-            <Text style={[styles.segmentText, view === 'week' && styles.segmentTextActive]}>Week</Text>
-          </Pressable>
-          <Pressable onPress={() => Alert.alert('Month view', 'Coming soon — week view has the full experience for now.')} style={styles.segmentBtn}>
-            <Text style={styles.segmentText}>Month</Text>
-          </Pressable>
-        </View>
       </View>
 
       <View style={styles.budgetCard}>
@@ -89,11 +89,7 @@ export function MealPlannerScreen() {
               </View>
               <View style={styles.slotGrid}>
                 {SLOTS.map(({ key, label }) => (
-                  <Pressable
-                    key={key}
-                    onPress={() => (day[key] ? undefined : setPicker({ dayIndex: di, slot: key }))}
-                    style={styles.slotCell}
-                  >
+                  <Pressable key={key} onPress={() => setPicker({ dayIndex: di, slot: key })} style={styles.slotCell}>
                     <Text style={styles.slotLabel}>{label}</Text>
                     <Text style={styles.slotValue} numberOfLines={1}>
                       {labelFor(day[key])}
@@ -110,14 +106,19 @@ export function MealPlannerScreen() {
         <Pressable style={styles.modalScrim} onPress={() => setPicker(null)} />
         <View style={styles.modalSheet}>
           <Text style={styles.modalTitle}>Choose a recipe</Text>
+          {currentPickerValue && (
+            <Pressable onPress={clearSlot} style={styles.clearRow}>
+              <Text style={styles.clearRowText}>✕ Clear this meal</Text>
+            </Pressable>
+          )}
           <FlatList
             data={recipes}
             keyExtractor={(r) => r.id}
             style={{ maxHeight: 420 }}
             renderItem={({ item }) => (
               <Pressable onPress={() => pickRecipe(item.id)} style={styles.modalRow}>
-                <Text style={styles.modalRowName}>{item.name}</Text>
-                <Text style={styles.modalRowMeta}>{item.country}</Text>
+                <Text style={[styles.modalRowName, item.id === currentPickerValue && styles.modalRowNameActive]}>{item.name}</Text>
+                <Text style={styles.modalRowMeta}>{item.id === currentPickerValue ? '✓ Selected' : item.country}</Text>
               </Pressable>
             )}
           />
@@ -130,11 +131,6 @@ export function MealPlannerScreen() {
 const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { fontFamily: fonts.heading, fontSize: 30, color: colors.ink, letterSpacing: -0.5 },
-  segment: { flexDirection: 'row', backgroundColor: colors.white, borderRadius: 11, padding: 3 },
-  segmentBtn: { paddingHorizontal: 13, paddingVertical: 6, borderRadius: 8 },
-  segmentBtnActive: { backgroundColor: colors.deepGreen },
-  segmentText: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.secondaryText },
-  segmentTextActive: { color: colors.mint },
   budgetCard: { marginTop: 16, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.deepGreen, borderRadius: radii.lg, padding: 17 },
   budgetEyebrow: { fontSize: 11.5, color: colors.tealDark, fontFamily: fonts.bodyBold },
   budgetVal: { fontFamily: fonts.heading, fontSize: 22, color: colors.mint, marginTop: 2 },
@@ -153,7 +149,10 @@ const styles = StyleSheet.create({
   modalScrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
   modalSheet: { backgroundColor: colors.screenBg, borderTopLeftRadius: radii.xxl, borderTopRightRadius: radii.xxl, padding: 20, paddingBottom: 34 },
   modalTitle: { fontFamily: fonts.heading, fontSize: 20, color: colors.ink, marginBottom: 12 },
+  clearRow: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.divider },
+  clearRowText: { color: colors.coralSoft, fontFamily: fonts.bodyExtraBold, fontSize: 13.5 },
   modalRow: { paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: colors.divider, flexDirection: 'row', justifyContent: 'space-between' },
   modalRowName: { fontFamily: fonts.bodySemiBold, fontSize: 14.5, color: colors.ink },
+  modalRowNameActive: { color: colors.tealLink, fontFamily: fonts.bodyExtraBold },
   modalRowMeta: { fontSize: 12.5, color: colors.secondaryText, fontFamily: fonts.bodySemiBold },
 });

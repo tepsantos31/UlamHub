@@ -1,17 +1,18 @@
 {
   "expo": {
-    "name": "Ulam",
-    "slug": "ulam",
-    "scheme": "ulam",
+    "name": "UlamHub",
+    "slug": "ulamhub",
+    "scheme": "ulamhub",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.ulam"
+      "bundleIdentifier": "com.ulamhub.ulamhub"
     },
     "android": {
+      "package": "com.ulamhub.ulamhub",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -25,7 +26,14 @@
     },
     "plugins": [
       "expo-font",
-      "expo-splash-screen"
+      "expo-splash-screen",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "UlamHub uses your photos to let you add a cover photo to a recipe or scan a handwritten/printed recipe with AI.",
+          "cameraPermission": "UlamHub uses your camera to scan an ingredient or take a photo for a recipe."
+        }
+      ]
     ]
   }
 }

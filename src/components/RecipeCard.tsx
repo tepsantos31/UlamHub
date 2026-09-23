@@ -41,7 +41,17 @@ export function RecipeCard({ recipe, onPress, width = 180, imageHeight = 120, lo
   );
 }
 
-export function TrendingCard({ recipe, onPress, locked = false }: { recipe: Recipe; onPress: () => void; locked?: boolean }) {
+export function TrendingCard({
+  recipe,
+  onPress,
+  locked = false,
+  shareCount,
+}: {
+  recipe: Recipe;
+  onPress: () => void;
+  locked?: boolean;
+  shareCount?: number;
+}) {
   return (
     <Pressable onPress={onPress} style={styles.trendingCard}>
       <PlaceholderImage uri={recipe.photoUri} source={recipe.photoAsset} style={StyleSheet.absoluteFill} />
@@ -53,6 +63,11 @@ export function TrendingCard({ recipe, onPress, locked = false }: { recipe: Reci
       ) : (
         <View style={styles.trendingHeart}>
           <HeartIcon size={16} />
+        </View>
+      )}
+      {shareCount != null && shareCount > 0 && (
+        <View style={styles.trendingShareBadge}>
+          <Text style={styles.trendingShareBadgeText}>🔗 {shareCount}</Text>
         </View>
       )}
       <View style={styles.trendingTextWrap}>
@@ -138,6 +153,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  trendingShareBadge: {
+    position: 'absolute',
+    top: 11,
+    left: 11,
+    backgroundColor: 'rgba(14,59,57,0.82)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  trendingShareBadgeText: {
+    color: colors.mint,
+    fontSize: 10.5,
+    fontFamily: fonts.bodyBold,
   },
   trendingTextWrap: {
     position: 'absolute',

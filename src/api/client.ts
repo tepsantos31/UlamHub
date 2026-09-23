@@ -1,11 +1,15 @@
 import Constants from 'expo-constants';
-import { Ingredient, RecipeStep } from '../types/models';
+import { Ingredient, RecipeStep, Nutrition } from '../types/models';
 import { supabase } from '../lib/supabase';
 
-// The phone (Expo Go) can't reach "localhost" of the dev machine — resolve the
-// LAN IP Metro is already using (Constants.expoConfig.hostUri, e.g. "192.168.1.23:8081")
-// and talk to the backend on the same host, port 4000.
+// A release build has no Metro dev server to derive a host from, so it MUST
+// be given the real deployed backend URL via EXPO_PUBLIC_API_BASE_URL (set at
+// build time — see .env.example). In local dev, with no override set, fall
+// back to resolving the LAN IP Metro is already using
+// (Constants.expoConfig.hostUri, e.g. "192.168.1.23:8081") so a phone running
+// Expo Go/a dev client can still reach the backend on the same host, port 4000.
 function resolveApiBase(): string {
+  if (process.env.EXPO_PUBLIC_API_BASE_URL) return process.env.EXPO_PUBLIC_API_BASE_URL;
   const hostUri = Constants.expoConfig?.hostUri; // "192.168.1.23:8081" | undefined
   const host = hostUri?.split(':')[0];
   if (host) return `http://${host}:4000`;
@@ -43,6 +47,8 @@ export interface ExtractedRecipe {
   type: string;
   servings: number;
   timeMinutes: number;
+  kcal: number;
+  nutrition: Nutrition;
   ingredients: Ingredient[];
   steps: RecipeStep[];
   sourceUrl?: string;
@@ -53,7 +59,6 @@ export function extractRecipe(input: { url?: string; text?: string; imageBase64?
 }
 
 export interface ChatContext {
-  pantry?: string[];
   recipeNames?: string[];
 }
 
@@ -72,6 +77,15 @@ export function supportChat(input: { message: string; history?: ChatHistoryItem[
 
 export function leftoverAlchemist(input: { imageBase64?: string; text?: string }): Promise<ExtractedRecipe> {
   return post<ExtractedRecipe>('/api/leftover-alchemist', input);
+}
+
+export function generateRecipePhoto(input: {
+  name: string;
+  country?: string;
+  type?: string;
+  ingredients?: string[];
+}): Promise<{ imageBase64: string }> {
+  return post<{ imageBase64: string }>('/api/generate-photo', input);
 }
 
 export interface ScannedIngredient {
@@ -128,5 +142,22 @@ export async function checkHealth(): Promise<boolean> {
     return res.ok;
   } catch {
     return false;
+  }
+}
+
+/** Permanently deletes the signed-in account and everything owned by it
+ * (recipes, meal plan, grocery list, kitchen membership) — every table
+ * cascades off the auth user server-side. Irreversible. */
+export async function deleteAccount(): Promise<void> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error('Sign in required');
+  const res = await fetch(`${API_BASE_URL}/api/account`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(text ? JSON.parse(text).error : `Could not delete account (${res.status})`);
   }
 }
