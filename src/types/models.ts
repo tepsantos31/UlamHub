@@ -8,7 +8,13 @@ export type Country =
   | 'Japanese'
   | 'Indian'
   | 'Chinese'
-  | 'Greek';
+  | 'Greek'
+  | 'Thai'
+  | 'Korean'
+  | 'Vietnamese'
+  | 'French'
+  | 'Spanish'
+  | 'Lebanese';
 
 // Cuisine-specific regional style, e.g. Philippine regions for Filipino dishes.
 // Optional and only meaningful for cuisines with a documented regional tradition.
@@ -91,6 +97,7 @@ export interface Recipe {
   story?: string;
   madeItPhotos?: string[];
   sharedRowId?: string; // set once this recipe has a live public share link
+  savedFromShare?: boolean; // true if this was saved via a share link rather than created/imported directly
 }
 
 export interface PlanDay {
@@ -115,11 +122,6 @@ export interface GroceryGroup {
   items: GroceryItem[];
 }
 
-export interface PantryItem {
-  name: string;
-  have: boolean;
-}
-
 export interface QuizState {
   household: Household;
   countries: Country[];
@@ -137,11 +139,10 @@ export interface SettingsState {
   unit: 'metric' | 'imperial';
   notif: {
     mealRem: boolean;
-    pantry: boolean;
     grocery: boolean;
     social: boolean;
   };
-  plan: 'monthly' | 'annual' | 'family' | null;
+  plan: 'monthly' | 'annual' | null;
   planExpiresAt?: string; // ISO date — when the current paid period runs out
 }
 

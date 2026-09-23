@@ -100,7 +100,7 @@ export function BrowseScreen() {
             recipe={r}
             width={165}
             imageHeight={104}
-            locked={settings ? !canAccessRecipe(r, settings) : false}
+            locked={settings ? !canAccessRecipe(r, settings, recipes) : false}
             onPress={() => navigation.navigate('RecipeDetail', { recipeId: r.id })}
           />
         ))}

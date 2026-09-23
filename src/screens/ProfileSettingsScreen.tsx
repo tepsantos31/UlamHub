@@ -7,15 +7,16 @@ import { colors, fonts, radii, shadow } from '../theme/theme';
 import { Screen } from '../components/Screen';
 import { SectionLabel, GroupedList, ListRow } from '../components/GroupedList';
 import { ToggleSwitch } from '../components/ToggleSwitch';
-import { OnboardingState, PantryItem, ProfileState, SettingsState } from '../types/models';
+import { OnboardingState, ProfileState, SettingsState } from '../types/models';
 import { getOnboarding, setOnboarding } from '../storage/onboarding';
 import { getProfile, getSettings, setSettings } from '../storage/settings';
 import { listRecipes } from '../storage/recipes';
-import { getPantry, toggleHave } from '../storage/pantry';
+import { clearAllLocalData } from '../storage/db';
 import { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { useAuth, signOut } from '../lib/auth';
 import { supabaseConfigured } from '../lib/supabase';
-import { isSubscriptionActive } from '../utils/subscription';
+import { deleteAccount as deleteAccountRemote } from '../api/client';
+import { isSubscriptionActive, FREE_RECIPE_CAP } from '../utils/subscription';
 
 type Nav = CompositeNavigationProp<BottomTabNavigationProp<MainTabParamList, 'Profile'>, NativeStackNavigationProp<RootStackParamList>>;
 
@@ -26,30 +27,19 @@ export function ProfileSettingsScreen() {
   const [onboarding, setOnboardingState] = useState<OnboardingState | null>(null);
   const [settings, setSettingsState] = useState<SettingsState | null>(null);
   const [recipeCount, setRecipeCount] = useState(0);
-  const [pantry, setPantryState] = useState<PantryItem[]>([]);
+  const [deleting, setDeleting] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       (async () => {
-        const [p, o, s, recipes, pantryItems] = await Promise.all([
-          getProfile(),
-          getOnboarding(),
-          getSettings(),
-          listRecipes(),
-          getPantry(),
-        ]);
+        const [p, o, s, recipes] = await Promise.all([getProfile(), getOnboarding(), getSettings(), listRecipes()]);
         setProfileState(p);
         setOnboardingState(o);
         setSettingsState(s);
-        setRecipeCount(recipes.length);
-        setPantryState(pantryItems);
+        setRecipeCount(recipes.filter((r) => r.userAdded).length);
       })();
     }, []),
   );
-
-  const onTogglePantry = async (name: string) => {
-    setPantryState(await toggleHave(name));
-  };
 
   if (!profile || !onboarding || !settings) return <View style={{ flex: 1, backgroundColor: colors.screenBg }} />;
 
@@ -89,6 +79,40 @@ export function ProfileSettingsScreen() {
         },
       },
     ]);
+  };
+
+  const deleteAccount = () => {
+    if (!session) {
+      Alert.alert('No cloud account', 'You’re not signed in, so there’s no cloud account to delete.');
+      return;
+    }
+    Alert.alert(
+      'Delete account',
+      'This permanently deletes your account and everything tied to it — recipes, meal plan, grocery list, and kitchen membership. This can’t be undone. Note: this doesn’t cancel an active subscription — manage that separately in your App Store or Play Store account settings.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete account',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              await deleteAccountRemote();
+              await signOut();
+              await clearAllLocalData();
+              navigation.getParent<NativeStackNavigationProp<RootStackParamList>>()?.reset({
+                index: 0,
+                routes: [{ name: 'OnboardingCarousel' }],
+              });
+            } catch (e: any) {
+              Alert.alert('Could not delete account', e?.message ?? 'Something went wrong — please try again.');
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   const subscriptionActive = isSubscriptionActive(settings);
@@ -131,8 +155,14 @@ export function ProfileSettingsScreen() {
           </View>
         </View>
         <View style={styles.statsRow}>
+          <Pressable style={styles.statCell} onPress={() => navigation.navigate('MyRecipes')}>
+            <Text style={styles.statNum}>
+              {recipeCount}
+              {!isSubscriptionActive(settings) && <Text style={styles.statNumCap}>/{FREE_RECIPE_CAP}</Text>}
+            </Text>
+            <Text style={styles.statLabel}>Recipes</Text>
+          </Pressable>
           {[
-            { n: String(recipeCount), l: 'Recipes' },
             { n: '5', l: 'Cookbooks' },
             { n: '87', l: 'Following' },
           ].map((s) => (
@@ -151,7 +181,7 @@ export function ProfileSettingsScreen() {
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.premiumTitle}>Go Premium</Text>
-          <Text style={styles.premiumSub}>Unlimited imports, AI engine & family sync</Text>
+          <Text style={styles.premiumSub}>Unlimited imports, AI engine & kitchen crew</Text>
         </View>
       </Pressable>
 
@@ -175,31 +205,18 @@ export function ProfileSettingsScreen() {
         />
       </GroupedList>
 
-      <SectionLabel>Pantry Staples</SectionLabel>
-      <GroupedList>
-        {pantry.map((item, i) => (
-          <ListRow
-            key={item.name}
-            label={item.name}
-            isLast={i === pantry.length - 1}
-            right={<ToggleSwitch value={item.have} onValueChange={() => onTogglePantry(item.name)} />}
-          />
-        ))}
-      </GroupedList>
-
       <SectionLabel>Notifications</SectionLabel>
       <GroupedList>
         <ListRow label="Meal reminders" right={<ToggleSwitch value={settings.notif.mealRem} onValueChange={() => toggleNotif('mealRem')} />} />
-        <ListRow label="Pantry low-stock alerts" right={<ToggleSwitch value={settings.notif.pantry} onValueChange={() => toggleNotif('pantry')} />} />
         <ListRow label="Grocery reminders" right={<ToggleSwitch value={settings.notif.grocery} onValueChange={() => toggleNotif('grocery')} />} />
         <ListRow label="Social notifications" isLast right={<ToggleSwitch value={settings.notif.social} onValueChange={() => toggleNotif('social')} />} />
       </GroupedList>
 
-      <SectionLabel>Household</SectionLabel>
+      <SectionLabel>Kitchen</SectionLabel>
       <GroupedList>
         <ListRow
-          label="Household"
-          value={session ? undefined : 'Sign in to share'}
+          label="My Kitchen"
+          value={session ? undefined : 'Sign in to join'}
           isLast
           onPress={() => {
             if (!supabaseConfigured) {
@@ -207,10 +224,10 @@ export function ProfileSettingsScreen() {
               return;
             }
             if (!session) {
-              Alert.alert('Sign in required', 'Log out and sign in with an account to set up a shared household.');
+              Alert.alert('Sign in required', 'Log out and sign in with an account to set up a kitchen crew.');
               return;
             }
-            navigation.navigate('Household');
+            navigation.navigate('MyKitchen');
           }}
         />
       </GroupedList>
@@ -232,12 +249,14 @@ export function ProfileSettingsScreen() {
           }
         />
         <ListRow label="Export my data" onPress={() => Alert.alert('Export', 'Your data lives on-device in AsyncStorage, and syncs to the cloud if you’re signed in.')} />
-        <ListRow label="Delete account" danger isLast onPress={() => Alert.alert('Delete account', 'Not available in this build yet — contact support to delete your cloud data.')} />
+        <ListRow label={deleting ? 'Deleting…' : 'Delete account'} danger isLast onPress={deleting ? () => {} : deleteAccount} />
       </GroupedList>
 
       <SectionLabel>Support</SectionLabel>
       <GroupedList>
-        <ListRow label="Need Help?" isLast onPress={() => navigation.navigate('SupportChat')} />
+        <ListRow label="Need Help?" onPress={() => navigation.navigate('SupportChat')} />
+        <ListRow label="Privacy Policy" onPress={() => navigation.navigate('Legal', { doc: 'privacy' })} />
+        <ListRow label="Terms of Service" isLast onPress={() => navigation.navigate('Legal', { doc: 'terms' })} />
       </GroupedList>
 
       <Text style={styles.logout} onPress={logOut}>
@@ -260,6 +279,7 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: 'row', marginTop: 16, borderTopWidth: 1, borderTopColor: colors.divider, paddingTop: 14 },
   statCell: { flex: 1, alignItems: 'center' },
   statNum: { fontFamily: fonts.heading, fontSize: 19, color: colors.ink },
+  statNumCap: { fontFamily: fonts.bodySemiBold, fontSize: 13, color: colors.secondaryText },
   statLabel: { fontSize: 11, color: colors.secondaryText, fontFamily: fonts.bodySemiBold, marginTop: 1 },
   premiumBanner: {
     marginTop: 14,

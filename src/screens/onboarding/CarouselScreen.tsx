@@ -23,8 +23,8 @@ const SLIDES = [
     body: 'Meal plans that respect your budget, pantry, and dietary needs — down to the grocery list.',
   },
   {
-    title: 'Cook together, wherever',
-    body: 'Share a family cookbook and grocery list. Attribute every dish to whoever in the family made it.',
+    title: 'Build your kitchen crew',
+    body: 'Create a kitchen and invite other subscribers — browse what everyone in your crew is cooking.',
   },
 ];
 

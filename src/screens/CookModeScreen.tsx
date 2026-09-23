@@ -7,7 +7,7 @@ import { RootStackParamList } from '../navigation/types';
 import { colors, fonts, radii } from '../theme/theme';
 import { CloseIcon } from '../components/Icon';
 import { Recipe } from '../types/models';
-import { getRecipe } from '../storage/recipes';
+import { getRecipe, listRecipes } from '../storage/recipes';
 import { getSettings } from '../storage/settings';
 import { canAccessRecipe } from '../utils/subscription';
 
@@ -32,9 +32,9 @@ export function CookModeScreen({ route, navigation }: Props) {
     // a locked recipe, but this guards CookMode itself against any other
     // path in (e.g. a future deep link) reaching it directly.
     (async () => {
-      const [r, settings] = await Promise.all([getRecipe(route.params.recipeId), getSettings()]);
+      const [r, settings, all] = await Promise.all([getRecipe(route.params.recipeId), getSettings(), listRecipes()]);
       if (!r) return;
-      if (!canAccessRecipe(r, settings)) {
+      if (!canAccessRecipe(r, settings, all)) {
         Alert.alert('Recipe locked', 'This recipe needs an active subscription to cook.', [
           { text: 'OK', onPress: () => navigation.goBack() },
         ]);

@@ -11,11 +11,10 @@ import { RecipeCard, TrendingCard } from '../components/RecipeCard';
 import { SearchIcon, BellIcon } from '../components/Icon';
 import { Recipe, PlanDay, SettingsState } from '../types/models';
 import { listRecipes } from '../storage/recipes';
-import { getOnboarding } from '../storage/onboarding';
 import { getProfile, getSettings } from '../storage/settings';
 import { getPlan } from '../storage/plan';
-import { rankRecipes } from '../utils/recommend';
-import { canAccessRecipe } from '../utils/subscription';
+import { canAccessRecipe, isSubscriptionActive } from '../utils/subscription';
+import { fetchTrendingRecipes, TrendingRecipe } from '../lib/sync';
 import { MainTabParamList, RootStackParamList } from '../navigation/types';
 
 type Nav = CompositeNavigationProp<
@@ -35,31 +34,34 @@ export function HomeScreen() {
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [ranked, setRanked] = useState<Recipe[]>([]);
   const [plan, setPlan] = useState<PlanDay[]>([]);
   const [name, setName] = useState('there');
   const [avatarInitial, setAvatarInitial] = useState('U');
   const [settings, setSettingsState] = useState<SettingsState | null>(null);
+  const [trending, setTrending] = useState<TrendingRecipe[]>([]);
 
   useFocusEffect(
     useCallback(() => {
       let mounted = true;
       (async () => {
-        const [allRecipes, onboarding, profile, weekPlan, currentSettings] = await Promise.all([
+        const [allRecipes, profile, weekPlan, currentSettings] = await Promise.all([
           listRecipes(),
-          getOnboarding(),
           getProfile(),
           getPlan(),
           getSettings(),
         ]);
         if (!mounted) return;
         setRecipes(allRecipes);
-        setRanked(rankRecipes(allRecipes, onboarding.quiz));
         setPlan(weekPlan);
         setName(profile.name.split(' ')[0]);
         setAvatarInitial(profile.avatarInitial);
         setSettingsState(currentSettings);
       })();
+      // Separate from the block above — real community data over the
+      // network shouldn't hold up the rest of the screen loading.
+      fetchTrendingRecipes(6).then((t) => {
+        if (mounted) setTrending(t);
+      });
       return () => {
         mounted = false;
       };
@@ -69,7 +71,35 @@ export function HomeScreen() {
   const byId = new Map(recipes.map((r) => [r.id, r]));
   const todayName = WEEKDAYS[new Date().getDay()];
   const todayPlan = plan.find((d) => d.day === todayName) ?? plan[0];
-  const trending = [...recipes].sort((a, b) => b.cooks - a.cooks).slice(0, 3);
+  const myRecipes = recipes.filter((r) => r.userAdded);
+
+  const trendingCards = trending.map((t) => {
+    const local = byId.get(t.id);
+    const display: Recipe =
+      local ?? {
+        id: t.id,
+        name: t.name,
+        country: t.country,
+        type: t.type,
+        time: 0,
+        kcal: 0,
+        rating: 0,
+        cooks: 0,
+        budget: '$$',
+        diff: 'Home cook',
+        author: 'a fellow cook',
+        servingsBase: 4,
+        ingredients: [],
+        steps: [],
+        nutrition: { protein: 0, carbs: 0, fat: 0, sodium: 0, fiber: 0 },
+        saucePairings: [],
+        flavorBalance: [],
+      };
+    const onPress = local
+      ? () => navigation.navigate('RecipeDetail', { recipeId: local.id })
+      : () => navigation.navigate('SharedRecipe', { rowId: t.rowId });
+    return { key: t.rowId, recipe: display, shareCount: t.shareCount, onPress };
+  });
 
   const todayLabel = (val: string | null) => {
     if (!val) return '—';
@@ -117,17 +147,34 @@ export function HomeScreen() {
         ))}
       </View>
 
-      <SectionHeader title="What to cook today" right="AI picks" />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hScroll}>
-        {ranked.slice(0, 4).map((r) => (
-          <RecipeCard
-            key={r.id}
-            recipe={r}
-            locked={settings ? !canAccessRecipe(r, settings) : false}
-            onPress={() => navigation.navigate('RecipeDetail', { recipeId: r.id })}
-          />
-        ))}
-      </ScrollView>
+      <Pressable onPress={() => navigation.navigate('MyKitchen')} style={[styles.kitchenBanner, shadow.card]}>
+        <View style={styles.kitchenIcon}>
+          <Text style={{ fontSize: 20 }}>👨‍🍳</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.kitchenTitle}>My Kitchen</Text>
+          <Text style={styles.kitchenBody}>Invite your crew, browse each other's recipes</Text>
+        </View>
+        <Text style={styles.kitchenArrow}>→</Text>
+      </Pressable>
+
+      <SectionHeader title="My Recipes" right="See all →" onPressRight={() => navigation.navigate('MyRecipes')} />
+      {myRecipes.length > 0 ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hScroll}>
+          {myRecipes.slice(0, 6).map((r) => (
+            <RecipeCard
+              key={r.id}
+              recipe={r}
+              locked={settings ? !canAccessRecipe(r, settings, recipes) : false}
+              onPress={() => navigation.navigate('RecipeDetail', { recipeId: r.id })}
+            />
+          ))}
+        </ScrollView>
+      ) : (
+        <Pressable onPress={() => navigation.navigate('AddRecipe')} style={[styles.emptyMyRecipes, shadow.card]}>
+          <Text style={styles.emptyMyRecipesText}>You haven't added any recipes yet — tap to add your first one</Text>
+        </Pressable>
+      )}
 
       <SectionHeader title="AI Kitchen Tools" />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hScroll}>
@@ -136,6 +183,11 @@ export function HomeScreen() {
             <View style={[styles.toolIcon, { backgroundColor: t.tint }]}>
               <Text style={{ fontSize: 20 }}>{t.icon}</Text>
             </View>
+            {settings && !isSubscriptionActive(settings) && (
+              <View style={styles.toolLockBadge}>
+                <Text style={{ fontSize: 10 }}>🔒</Text>
+              </View>
+            )}
             <Text style={styles.toolLabel}>{t.label}</Text>
             <Text style={styles.toolDesc}>{t.desc}</Text>
           </Pressable>
@@ -172,16 +224,30 @@ export function HomeScreen() {
       </Pressable>
 
       <SectionHeader title="Trending in the community" />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hScroll}>
-        {trending.map((r) => (
-          <TrendingCard
-            key={r.id}
-            recipe={r}
-            locked={settings ? !canAccessRecipe(r, settings) : false}
-            onPress={() => navigation.navigate('RecipeDetail', { recipeId: r.id })}
-          />
-        ))}
-      </ScrollView>
+      {settings && !isSubscriptionActive(settings) ? (
+        <Pressable onPress={() => navigation.navigate('Paywall')} style={[styles.emptyMyRecipes, shadow.card]}>
+          <Text style={{ fontSize: 22 }}>🔒</Text>
+          <Text style={[styles.emptyMyRecipesText, { marginTop: 6 }]}>
+            Browsing what the community is sharing is a Premium feature — tap to subscribe.
+          </Text>
+        </Pressable>
+      ) : trendingCards.length > 0 ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hScroll}>
+          {trendingCards.map((c) => (
+            <TrendingCard
+              key={c.key}
+              recipe={c.recipe}
+              shareCount={c.shareCount}
+              locked={settings ? !canAccessRecipe(c.recipe, settings, recipes) : false}
+              onPress={c.onPress}
+            />
+          ))}
+        </ScrollView>
+      ) : (
+        <View style={[styles.emptyMyRecipes, shadow.card]}>
+          <Text style={styles.emptyMyRecipesText}>Nothing trending yet — be the first to share a recipe and it'll show up here.</Text>
+        </View>
+      )}
     </Screen>
   );
 }
@@ -250,8 +316,41 @@ const styles = StyleSheet.create({
   quickIcon: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   quickLabel: { fontSize: 10.5, fontFamily: fonts.bodyBold, color: '#2C4642', textAlign: 'center' },
   hScroll: { gap: 14, paddingBottom: 4 },
+  kitchenBanner: {
+    marginTop: 22,
+    backgroundColor: colors.white,
+    borderRadius: radii.xl,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  kitchenIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: colors.mint, alignItems: 'center', justifyContent: 'center' },
+  kitchenTitle: { fontFamily: fonts.bodyBold, fontSize: 14.5, color: colors.ink },
+  kitchenBody: { fontSize: 11.5, color: colors.secondaryText, marginTop: 2, fontFamily: fonts.bodySemiBold },
+  kitchenArrow: { fontSize: 16, color: colors.tealLink, fontFamily: fonts.bodyBold },
+  emptyMyRecipes: {
+    backgroundColor: colors.white,
+    borderRadius: radii.lg,
+    padding: 18,
+    alignItems: 'center',
+  },
+  emptyMyRecipesText: { fontSize: 13, color: colors.secondaryText, fontFamily: fonts.bodySemiBold, textAlign: 'center' },
   toolCard: { width: 150, backgroundColor: colors.white, borderRadius: radii.xl, padding: 14 },
   toolIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  toolLockBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+  },
   toolLabel: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.ink, lineHeight: 17 },
   toolDesc: { fontSize: 11, color: colors.secondaryText, marginTop: 4, lineHeight: 15 },
   planCard: {

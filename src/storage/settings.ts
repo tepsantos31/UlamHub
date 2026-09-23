@@ -4,7 +4,7 @@ import { pushSettings as pushSettingsRemote, pushProfile } from '../lib/sync';
 
 const DEFAULT_SETTINGS: SettingsState = {
   unit: 'metric',
-  notif: { mealRem: true, pantry: true, grocery: false, social: true },
+  notif: { mealRem: true, grocery: false, social: true },
   plan: null,
 };
 

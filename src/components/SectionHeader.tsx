@@ -1,17 +1,25 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { colors, fonts } from '../theme/theme';
 
 interface Props {
   title: string;
   right?: string;
+  onPressRight?: () => void;
 }
 
-export function SectionHeader({ title, right }: Props) {
+export function SectionHeader({ title, right, onPressRight }: Props) {
   return (
     <View style={styles.row}>
       <Text style={styles.title}>{title}</Text>
-      {right != null && <Text style={styles.right}>{right}</Text>}
+      {right != null &&
+        (onPressRight ? (
+          <Pressable onPress={onPressRight} hitSlop={8}>
+            <Text style={styles.right}>{right}</Text>
+          </Pressable>
+        ) : (
+          <Text style={styles.right}>{right}</Text>
+        ))}
     </View>
   );
 }

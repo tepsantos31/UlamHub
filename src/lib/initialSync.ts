@@ -12,7 +12,6 @@ import { KEYS, setJSON } from '../storage/db';
 import { listRecipes } from '../storage/recipes';
 import { getPlan } from '../storage/plan';
 import { getGrocery } from '../storage/grocery';
-import { getPantry } from '../storage/pantry';
 import { getSettings, getProfile } from '../storage/settings';
 import { getOnboarding } from '../storage/onboarding';
 import {
@@ -22,8 +21,6 @@ import {
   pullPlan,
   pushGrocery,
   pullGrocery,
-  pushPantry,
-  pullPantry,
   pushSettings,
   pullSettings,
   pushOnboarding,
@@ -44,7 +41,6 @@ export async function runInitialSync(): Promise<void> {
 
   await syncSingleton(KEYS.plan, getPlan, pullPlan, pushPlan);
   await syncSingleton(KEYS.grocery, getGrocery, pullGrocery, pushGrocery);
-  await syncSingleton(KEYS.pantry, getPantry, pullPantry, pushPantry);
   await syncSingleton(KEYS.settings, getSettings, pullSettings, pushSettings);
   await syncSingleton(KEYS.onboarding, getOnboarding, pullOnboarding, pushOnboarding);
   await syncSingleton(KEYS.profile, getProfile, pullProfile, pushProfile);

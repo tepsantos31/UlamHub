@@ -16,9 +16,12 @@ export type RootStackParamList = {
   LeftoverAlchemist: undefined;
   IngredientScanner: undefined;
   PartyPlanner: undefined;
-  Household: undefined;
+  MyRecipes: undefined;
+  MyKitchen: undefined;
+  MemberKitchen: { memberId: string; memberName: string };
   SharedRecipe: { rowId: string };
   SupportChat: undefined;
+  Legal: { doc: 'privacy' | 'terms' };
 };
 
 export type MainTabParamList = {
