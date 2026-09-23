@@ -1,19 +1,31 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { colors, fonts, radii, shadow } from '../theme/theme';
 import { Screen } from '../components/Screen';
 import { HeaderBar } from '../components/HeaderBar';
 import { PillButton } from '../components/PillButton';
+import { PremiumGate } from '../components/PremiumGate';
 import { leftoverAlchemist } from '../api/client';
+import { getSettings } from '../storage/settings';
+import { isSubscriptionActive } from '../utils/subscription';
+import { SettingsState } from '../types/models';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'LeftoverAlchemist'>;
 
 export function LeftoverAlchemistScreen({ navigation }: Props) {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [settings, setSettingsState] = useState<SettingsState | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      getSettings().then(setSettingsState);
+    }, []),
+  );
 
   const runWithPhoto = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -54,6 +66,15 @@ export function LeftoverAlchemistScreen({ navigation }: Props) {
         Show me what's left in the fridge — a photo or just a quick list — and I'll invent something new to make with it.
       </Text>
 
+      {settings && !isSubscriptionActive(settings) ? (
+        <PremiumGate
+          icon="🧪"
+          title="Leftover Alchemist is a Premium tool"
+          body="Turning your leftovers into a new dish uses Kitchen AI — subscribe to UlamHub Premium to unlock it."
+          onGoPremium={() => navigation.navigate('Paywall')}
+        />
+      ) : (
+        <>
       <Pressable onPress={runWithPhoto} style={[styles.photoCard, shadow.soft]}>
         <View style={styles.photoIcon}>
           <Text style={{ fontSize: 22 }}>📷</Text>
@@ -80,6 +101,8 @@ export function LeftoverAlchemistScreen({ navigation }: Props) {
           <ActivityIndicator color={colors.tealDark} />
           <Text style={styles.loadingText}>Inventing something delicious…</Text>
         </View>
+      )}
+        </>
       )}
     </Screen>
   );

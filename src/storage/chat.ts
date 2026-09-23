@@ -2,7 +2,7 @@ import { getJSON, setJSON, KEYS } from './db';
 import { ChatMessage } from '../types/models';
 
 const DEFAULT_CHAT: ChatMessage[] = [
-  { role: 'ai', text: "Hi! I'm your Ulam cook. Tell me what's in your kitchen — or what you're craving." },
+  { role: 'ai', text: "Hi! I'm your UlamHub cook. Tell me what's in your kitchen — or what you're craving." },
 ];
 
 export async function getChat(): Promise<ChatMessage[]> {

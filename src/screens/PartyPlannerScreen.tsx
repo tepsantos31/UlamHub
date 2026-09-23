@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, TextInput, Pressable, Modal, FlatList, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { colors, fonts, radii, shadow } from '../theme/theme';
@@ -7,10 +8,13 @@ import { Screen } from '../components/Screen';
 import { HeaderBar } from '../components/HeaderBar';
 import { Chip } from '../components/Chip';
 import { PillButton } from '../components/PillButton';
+import { PremiumGate } from '../components/PremiumGate';
 import { generatePartyPlan, PartyPlan } from '../api/client';
 import { getPlan, fillSlot } from '../storage/plan';
 import { addMissingIngredientsToGrocery } from '../storage/grocery';
-import { Recipe } from '../types/models';
+import { getSettings } from '../storage/settings';
+import { isSubscriptionActive } from '../utils/subscription';
+import { Recipe, SettingsState } from '../types/models';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PartyPlanner'>;
 
@@ -26,6 +30,13 @@ export function PartyPlannerScreen({ navigation }: Props) {
   const [plan, setPlan] = useState<PartyPlan | null>(null);
   const [dayPickerOpen, setDayPickerOpen] = useState(false);
   const [addedGrocery, setAddedGrocery] = useState(false);
+  const [settings, setSettingsState] = useState<SettingsState | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      getSettings().then(setSettingsState);
+    }, []),
+  );
 
   const generate = async () => {
     setLoading(true);
@@ -86,6 +97,15 @@ export function PartyPlannerScreen({ navigation }: Props) {
       <Text style={styles.title}>Party Planner</Text>
       <Text style={styles.subtitle}>Tell me the guest count, occasion, and budget — I'll build the whole spread.</Text>
 
+      {settings && !isSubscriptionActive(settings) ? (
+        <PremiumGate
+          icon="🎉"
+          title="Party Planner is a Premium tool"
+          body="Building a full spread with Kitchen AI is a Premium feature — subscribe to UlamHub Premium to unlock it."
+          onGoPremium={() => navigation.navigate('Paywall')}
+        />
+      ) : (
+        <>
       <Text style={styles.label}>How many guests?</Text>
       <View style={styles.stepperRow}>
         <Pressable onPress={() => setGuestCount((g) => Math.max(2, g - 2))} style={styles.stepperBtn}>
@@ -171,6 +191,8 @@ export function PartyPlannerScreen({ navigation }: Props) {
         <Pressable style={styles.modalScrim} onPress={() => setDayPickerOpen(false)} />
         <DayPicker onPick={assignToDay} />
       </Modal>
+        </>
+      )}
     </Screen>
   );
 }

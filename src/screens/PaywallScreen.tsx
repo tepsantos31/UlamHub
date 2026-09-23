@@ -1,45 +1,104 @@
-import React, { useState } from 'react';
-import { View, Text, Pressable, Alert, StyleSheet } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, Pressable, Alert, ActivityIndicator, StyleSheet } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { PACKAGE_TYPE, PurchasesPackage } from 'react-native-purchases';
 import { RootStackParamList } from '../navigation/types';
 import { colors, fonts, radii } from '../theme/theme';
 import { CloseIcon } from '../components/Icon';
 import { PillButton } from '../components/PillButton';
 import { getSettings, setSettings } from '../storage/settings';
 import { computeExpiryDate } from '../utils/subscription';
+import { purchasesConfigured, getCurrentOffering, purchase, restore } from '../lib/purchases';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Paywall'>;
 
 const FEATURES = [
-  { f: 'Recipe imports', free: '5 / month', prem: 'Unlimited' },
-  { f: 'AI substitution engine', free: '—', prem: '✓' },
-  { f: 'Full nutrition calc', free: 'Basic', prem: 'Detailed' },
-  { f: 'Family cookbook cloud sync', free: '—', prem: '✓' },
-  { f: 'AI chat assistant', free: '10 / mo', prem: 'Unlimited' },
-  { f: 'Ad-free experience', free: '—', prem: '✓' },
+  { f: 'Your own recipes', free: 'Up to 10', prem: 'Unlimited' },
+  { f: 'Import from link & photo', free: '✓', prem: '✓' },
+  { f: 'Kitchen AI & AI tools', free: '—', prem: '✓' },
+  { f: 'Recipe Story & flavor tips', free: '—', prem: '✓' },
+  { f: 'Share recipes', free: '—', prem: '✓' },
+  { f: 'Browse community trending', free: '—', prem: '✓' },
 ];
 
-const PLANS: { key: 'monthly' | 'annual' | 'family'; name: string; price: string; per: string; note?: string }[] = [
+// Shown only while unconfigured (no RevenueCat keys yet) so the paywall still
+// has something to display in local/demo mode.
+const DEMO_PLANS: { key: 'monthly' | 'annual'; name: string; price: string; per: string; note?: string }[] = [
   { key: 'monthly', name: 'Monthly', price: '$4.99', per: '/mo' },
   { key: 'annual', name: 'Annual', price: '$39.99', per: '/yr', note: 'Save 33%' },
-  { key: 'family', name: 'Family', price: '$59.99', per: '/yr', note: 'Up to 6' },
 ];
 
 export function PaywallScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const [pick, setPick] = useState<'monthly' | 'annual' | 'family'>('annual');
+  const [pick, setPick] = useState<'monthly' | 'annual'>('annual');
+  const [packages, setPackages] = useState<PurchasesPackage[] | null>(null);
+  const [busy, setBusy] = useState<'subscribe' | 'restore' | null>(null);
 
-  const startTrial = async () => {
+  useFocusEffect(
+    useCallback(() => {
+      if (!purchasesConfigured) return;
+      getCurrentOffering().then((offering) => setPackages(offering?.availablePackages ?? []));
+    }, []),
+  );
+
+  const plans = purchasesConfigured
+    ? (packages ?? [])
+        .filter((p) => p.packageType === PACKAGE_TYPE.MONTHLY || p.packageType === PACKAGE_TYPE.ANNUAL)
+        .map((p) => ({
+          key: (p.packageType === PACKAGE_TYPE.ANNUAL ? 'annual' : 'monthly') as 'monthly' | 'annual',
+          name: p.packageType === PACKAGE_TYPE.ANNUAL ? 'Annual' : 'Monthly',
+          price: p.product.priceString,
+          per: p.packageType === PACKAGE_TYPE.ANNUAL ? '/yr' : '/mo',
+          pkg: p,
+        }))
+    : DEMO_PLANS.map((p) => ({ ...p, pkg: undefined as PurchasesPackage | undefined }));
+
+  const subscribeDemo = async () => {
     const settings = await getSettings();
     // Resubscribing always starts a fresh full period from today, whether
     // the old one had already lapsed or not — same as a real renewal would.
     await setSettings({ ...settings, plan: pick, planExpiresAt: computeExpiryDate(pick) });
     Alert.alert(
       'Demo only',
-      "This is a local mock — no real purchase happened (real StoreKit needs a custom build, not Expo Go). Your plan is saved locally though, including a real expiry date: created/shared/imported recipes lock again once that date passes, unless you resubscribe.",
+      'This is a local mock — no real purchase happened (RevenueCat isn’t configured on this build yet). Your plan is saved locally though, including a real expiry date: created/shared/imported recipes lock again once that date passes, unless you resubscribe.',
       [{ text: 'OK', onPress: () => navigation.goBack() }],
     );
+  };
+
+  const subscribe = async () => {
+    if (!purchasesConfigured) return subscribeDemo();
+    const selected = plans.find((p) => p.key === pick)?.pkg;
+    if (!selected) {
+      Alert.alert('Not available', 'This plan isn’t available right now — please try again shortly.');
+      return;
+    }
+    setBusy('subscribe');
+    try {
+      await purchase(selected);
+      navigation.goBack();
+    } catch (e: any) {
+      if (!e?.userCancelled) Alert.alert('Purchase failed', e?.message ?? 'Something went wrong — please try again.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const restorePurchase = async () => {
+    if (!purchasesConfigured) {
+      Alert.alert('Not available', 'Restoring purchases isn’t available in this build yet.');
+      return;
+    }
+    setBusy('restore');
+    try {
+      await restore();
+      Alert.alert('Restored', 'Your purchases have been restored.', [{ text: 'OK', onPress: () => navigation.goBack() }]);
+    } catch (e: any) {
+      Alert.alert('Could not restore', e?.message ?? 'Something went wrong — please try again.');
+    } finally {
+      setBusy(null);
+    }
   };
 
   return (
@@ -53,7 +112,7 @@ export function PaywallScreen({ navigation }: Props) {
         <View style={styles.logo}>
           <Text style={{ fontSize: 28 }}>✨</Text>
         </View>
-        <Text style={styles.title}>Ulam Premium</Text>
+        <Text style={styles.title}>UlamHub Premium</Text>
         <Text style={styles.subtitle}>Cook without limits — every cuisine, every tool</Text>
       </View>
 
@@ -72,26 +131,45 @@ export function PaywallScreen({ navigation }: Props) {
         ))}
       </View>
 
-      <View style={styles.plansRow}>
-        {PLANS.map((p) => {
-          const sel = pick === p.key;
-          return (
-            <Pressable key={p.key} onPress={() => setPick(p.key)} style={[styles.planCard, { backgroundColor: sel ? colors.deepGreen : colors.white, borderColor: sel ? colors.deepGreen : colors.borderMuted }]}>
-              {p.note && (
-                <View style={[styles.noteBadge, { backgroundColor: sel ? colors.teal : colors.mint }]}>
-                  <Text style={[styles.noteBadgeText, { color: sel ? colors.deepGreenLight : colors.tealLink }]}>{p.note}</Text>
-                </View>
-              )}
-              <Text style={[styles.planName, { color: sel ? colors.mint : colors.ink }]}>{p.name}</Text>
-              <Text style={[styles.planPrice, { color: sel ? colors.mint : colors.ink }]}>{p.price}</Text>
-              <Text style={[styles.planPer, { color: sel ? colors.tealDark : colors.secondaryText }]}>{p.per}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {purchasesConfigured && packages === null ? (
+        <ActivityIndicator color={colors.mint} style={{ marginTop: 30 }} />
+      ) : (
+        <View style={styles.plansRow}>
+          {plans.map((p) => {
+            const sel = pick === p.key;
+            return (
+              <Pressable key={p.key} onPress={() => setPick(p.key)} style={[styles.planCard, { backgroundColor: sel ? colors.deepGreen : colors.white, borderColor: sel ? colors.deepGreen : colors.borderMuted }]}>
+                {'note' in p && p.note && (
+                  <View style={[styles.noteBadge, { backgroundColor: sel ? colors.teal : colors.mint }]}>
+                    <Text style={[styles.noteBadgeText, { color: sel ? colors.deepGreenLight : colors.tealLink }]}>{p.note}</Text>
+                  </View>
+                )}
+                <Text style={[styles.planName, { color: sel ? colors.mint : colors.ink }]}>{p.name}</Text>
+                <Text style={[styles.planPrice, { color: sel ? colors.mint : colors.ink }]}>{p.price}</Text>
+                <Text style={[styles.planPer, { color: sel ? colors.tealDark : colors.secondaryText }]}>{p.per}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
 
-      <PillButton label="Start 7-day free trial" onPress={startTrial} style={{ marginTop: 22 }} />
-      <Text style={styles.legal}>Cancel anytime · <Text style={{ color: colors.tealLink, fontFamily: fonts.bodyBold }}>Restore purchase</Text></Text>
+      <PillButton
+        label={purchasesConfigured ? 'Subscribe' : 'Start 7-day free trial'}
+        onPress={subscribe}
+        loading={busy === 'subscribe'}
+        disabled={busy !== null || (purchasesConfigured && plans.length === 0)}
+        style={{ marginTop: 22 }}
+      />
+      <Text style={styles.legal}>
+        Cancel anytime ·{' '}
+        <Text style={{ color: colors.tealLink, fontFamily: fonts.bodyBold }} onPress={busy ? undefined : restorePurchase}>
+          {busy === 'restore' ? 'Restoring…' : 'Restore purchase'}
+        </Text>
+        {'\n'}
+        <Text onPress={() => navigation.navigate('Legal', { doc: 'terms' })}>Terms</Text>
+        {'  ·  '}
+        <Text onPress={() => navigation.navigate('Legal', { doc: 'privacy' })}>Privacy</Text>
+      </Text>
     </View>
   );
 }

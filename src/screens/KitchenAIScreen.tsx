@@ -6,10 +6,12 @@ import { RootStackParamList } from '../navigation/types';
 import { colors, fonts, radii } from '../theme/theme';
 import { BackChevronIcon, SendIcon } from '../components/Icon';
 import { RecipeCard } from '../components/RecipeCard';
-import { ChatMessage, Recipe } from '../types/models';
+import { PremiumGate } from '../components/PremiumGate';
+import { ChatMessage, Recipe, SettingsState } from '../types/models';
 import { getChat, appendChat } from '../storage/chat';
 import { listRecipes } from '../storage/recipes';
-import { getPantry } from '../storage/pantry';
+import { getSettings } from '../storage/settings';
+import { isSubscriptionActive } from '../utils/subscription';
 import { chatMessage } from '../api/client';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'KitchenAI'>;
@@ -30,13 +32,15 @@ export function KitchenAIScreen({ route, navigation }: Props) {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [draft, setDraft] = useState(route.params?.prefill ?? '');
   const [sending, setSending] = useState(false);
+  const [settings, setSettingsState] = useState<SettingsState | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     (async () => {
-      const [c, r] = await Promise.all([getChat(), listRecipes()]);
+      const [c, r, s] = await Promise.all([getChat(), listRecipes(), getSettings()]);
       setMessages(c);
       setRecipes(r);
+      setSettingsState(s);
     })();
   }, []);
 
@@ -49,12 +53,11 @@ export function KitchenAIScreen({ route, navigation }: Props) {
     setMessages(afterUser);
     setSending(true);
     try {
-      const pantry = (await getPantry()).filter((p) => p.have).map((p) => p.name);
       const history = afterUser.slice(-8).map((m) => ({ role: m.role, text: m.text }));
       const res = await chatMessage({
         message: t,
         history,
-        context: { pantry, recipeNames: recipes.map((r) => r.name) },
+        context: { recipeNames: recipes.map((r) => r.name) },
       });
       const mentioned = findMentionedRecipe(res.reply, recipes);
       const aiMsg: ChatMessage = { role: 'ai', text: res.reply, recipeId: mentioned?.id };
@@ -84,6 +87,16 @@ export function KitchenAIScreen({ route, navigation }: Props) {
         </View>
       </View>
 
+      {settings && !isSubscriptionActive(settings) ? (
+        <ScrollView contentContainerStyle={styles.messagesWrap}>
+          <PremiumGate
+            icon="✨"
+            title="Kitchen AI is a Premium tool"
+            body="Chatting with your cooking assistant is a Premium feature — subscribe to UlamHub Premium to unlock it."
+            onGoPremium={() => navigation.navigate('Paywall')}
+          />
+        </ScrollView>
+      ) : (
       <ScrollView
         ref={scrollRef}
         style={{ flex: 1 }}
@@ -122,7 +135,9 @@ export function KitchenAIScreen({ route, navigation }: Props) {
           ))}
         </ScrollView>
       </ScrollView>
+      )}
 
+      {settings && isSubscriptionActive(settings) && (
       <View style={[styles.inputRow, { paddingBottom: insets.bottom + 12 }]}>
         <TextInput
           value={draft}
@@ -136,6 +151,7 @@ export function KitchenAIScreen({ route, navigation }: Props) {
           <SendIcon />
         </Pressable>
       </View>
+      )}
     </KeyboardAvoidingView>
   );
 }

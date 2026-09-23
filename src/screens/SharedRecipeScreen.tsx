@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { colors, fonts, radii } from '../theme/theme';
@@ -8,7 +8,9 @@ import { HeaderBar } from '../components/HeaderBar';
 import { PillButton } from '../components/PillButton';
 import { Recipe } from '../types/models';
 import { fetchSharedRecipe } from '../lib/sync';
-import { makeRecipeId, saveRecipe } from '../storage/recipes';
+import { makeRecipeId, saveRecipe, listRecipes } from '../storage/recipes';
+import { getSettings } from '../storage/settings';
+import { canAddRecipe, FREE_RECIPE_CAP } from '../utils/subscription';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SharedRecipe'>;
 
@@ -34,9 +36,21 @@ export function SharedRecipeScreen({ route, navigation }: Props) {
 
   const saveToCookbook = async () => {
     if (!recipe) return;
+    const [existing, settings] = await Promise.all([listRecipes(), getSettings()]);
+    if (!canAddRecipe(settings, existing)) {
+      Alert.alert(
+        'Recipe limit reached',
+        `Free accounts can save up to ${FREE_RECIPE_CAP} recipes. Subscribe to UlamHub Premium for unlimited recipes.`,
+        [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'Go Premium', onPress: () => navigation.navigate('Paywall') },
+        ],
+      );
+      return;
+    }
     setSaving(true);
     const id = makeRecipeId(recipe.name);
-    const copy: Recipe = { ...recipe, id, userAdded: true, favorite: false, photoAsset: undefined };
+    const copy: Recipe = { ...recipe, id, userAdded: true, savedFromShare: true, favorite: false, photoAsset: undefined };
     await saveRecipe(copy);
     navigation.replace('RecipeDetail', { recipeId: id });
   };

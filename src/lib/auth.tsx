@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import { Session } from '@supabase/supabase-js';
 import { supabase, supabaseConfigured } from './supabase';
 import { runInitialSync } from './initialSync';
+import { initPurchases, loginPurchases, logoutPurchases } from './purchases';
 
 interface AuthContextValue {
   session: Session | null;
@@ -20,16 +21,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const handleSession = (next: Session | null) => {
     setSession(next);
     const justSignedIn = !!next && !hadSession.current;
+    const justSignedOut = !next && hadSession.current;
     hadSession.current = !!next;
     if (justSignedIn) {
       setSyncing(true);
       runInitialSync()
         .catch(() => {})
         .finally(() => setSyncing(false));
+      loginPurchases(next!.user.id).catch(() => {});
+    }
+    if (justSignedOut) {
+      logoutPurchases().catch(() => {});
     }
   };
 
   useEffect(() => {
+    initPurchases();
     if (!supabaseConfigured) {
       setLoading(false);
       return;
