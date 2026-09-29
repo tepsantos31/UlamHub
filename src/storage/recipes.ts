@@ -1,7 +1,7 @@
 import { getJSON, setJSON, KEYS } from './db';
 import { RECIPE_SEED } from './seed';
 import { Recipe } from '../types/models';
-import { pushRecipe, uploadRecipePhoto } from '../lib/sync';
+import { pushRecipe, uploadRecipePhoto, deleteRecipeRemote } from '../lib/sync';
 
 const SEED_BY_ID = new Map(RECIPE_SEED.map((r) => [r.id, r]));
 
@@ -56,6 +56,12 @@ export async function saveRecipe(recipe: Recipe): Promise<void> {
       if (publicUrl) saveRecipe({ ...recipe, photoUri: publicUrl });
     })
     .catch(() => {});
+}
+
+export async function deleteRecipe(id: string): Promise<void> {
+  const all = await listRecipes();
+  await setJSON(KEYS.recipes, all.filter((r) => r.id !== id));
+  deleteRecipeRemote(id).catch(() => {});
 }
 
 export function makeRecipeId(name: string): string {

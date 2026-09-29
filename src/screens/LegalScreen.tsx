@@ -73,7 +73,7 @@ const TERMS: Section[] = [
   },
   {
     heading: 'Your content',
-    body: 'You keep ownership of the recipes, photos, and other content you add. By sharing a recipe — publicly via a link, or with your kitchen crew — you\'re granting the people who can see it permission to view it, and (for kitchen requests you approve) to copy it into their own cookbook.',
+    body: 'You keep ownership of the recipes, photos, and other content you add. By sharing a recipe — publicly via a link, or with a kitchen you\'re connected to — you\'re granting the people who can see it permission to view it, and (for kitchen requests you approve) to copy it into their own cookbook.',
   },
   {
     heading: 'Subscriptions',

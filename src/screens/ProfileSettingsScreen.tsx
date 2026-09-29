@@ -181,7 +181,7 @@ export function ProfileSettingsScreen() {
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.premiumTitle}>Go Premium</Text>
-          <Text style={styles.premiumSub}>Unlimited imports, AI engine & kitchen crew</Text>
+          <Text style={styles.premiumSub}>Unlimited imports, AI engine & Kitchen</Text>
         </View>
       </Pressable>
 
@@ -215,7 +215,7 @@ export function ProfileSettingsScreen() {
       <SectionLabel>Kitchen</SectionLabel>
       <GroupedList>
         <ListRow
-          label="My Kitchen"
+          label="Kitchen"
           value={session ? undefined : 'Sign in to join'}
           isLast
           onPress={() => {
@@ -224,10 +224,10 @@ export function ProfileSettingsScreen() {
               return;
             }
             if (!session) {
-              Alert.alert('Sign in required', 'Log out and sign in with an account to set up a kitchen crew.');
+              Alert.alert('Sign in required', 'Log out and sign in with an account to set up your kitchen.');
               return;
             }
-            navigation.navigate('MyKitchen');
+            navigation.navigate('Kitchen');
           }}
         />
       </GroupedList>

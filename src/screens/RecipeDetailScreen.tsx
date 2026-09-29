@@ -10,7 +10,7 @@ import { PlaceholderImage } from '../components/PlaceholderImage';
 import { BackChevronIcon, HeartIcon, ShareIcon, BookmarkIcon } from '../components/Icon';
 import { PillButton } from '../components/PillButton';
 import { Recipe, SettingsState } from '../types/models';
-import { getRecipe, saveRecipe, listRecipes } from '../storage/recipes';
+import { getRecipe, saveRecipe, deleteRecipe, listRecipes } from '../storage/recipes';
 import { addMissingIngredientsToGrocery } from '../storage/grocery';
 import { getSettings } from '../storage/settings';
 import { scaleIngredient } from '../utils/units';
@@ -116,6 +116,20 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
     } finally {
       setSharing(false);
     }
+  };
+
+  const onDelete = () => {
+    Alert.alert('Delete recipe', `Permanently delete "${recipe.name}"? This can't be undone.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          await deleteRecipe(recipe.id);
+          navigation.goBack();
+        },
+      },
+    ]);
   };
 
   const revokeShare = () => {
@@ -481,6 +495,12 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
           </ScrollView>
             </>
           )}
+
+          {recipe.userAdded && (
+            <Text style={styles.deleteLink} onPress={onDelete}>
+              Delete recipe
+            </Text>
+          )}
         </View>
       </ScrollView>
 
@@ -622,4 +642,5 @@ const styles = StyleSheet.create({
   },
   saveBtn: { width: 64, height: 56, borderRadius: radii.lg, borderWidth: 1.5, borderColor: colors.borderMuted, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
   sourceBtn: { width: 48, height: 48, borderRadius: radii.lg, borderWidth: 1.5, borderColor: colors.borderMuted, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
+  deleteLink: { textAlign: 'center', marginTop: 22, color: colors.coralSoft, fontFamily: fonts.bodyBold, fontSize: 14 },
 });

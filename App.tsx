@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import Constants from 'expo-constants';
 import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
+import { ShareIntentProvider, ShareIntentModule, getScheme, getShareExtensionKey } from 'expo-share-intent';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 import {
@@ -23,15 +25,37 @@ import { RootStackParamList } from './src/navigation/types';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
-// Handles both `ulam://recipe/<id>` (a real standalone build) and Expo Go's
-// own dev-time scheme (Linking.createURL abstracts the difference away) —
-// only screens reachable via a shared link need an entry here.
+// Handles `ulamhub://recipe/<id>` (a real standalone build), Expo Go's own
+// dev-time scheme (Linking.createURL abstracts the difference away), and —
+// on Android — someone sharing a link to UlamHub from another app (the OS
+// routes that through expo-share-intent's own fake "shareintent" URL, which
+// getInitialURL/subscribe below redirect to the ShareIntent bridge screen).
+// Only screens reachable via a shared link/URL need an entry here.
 const linking: LinkingOptions<RootStackParamList> = {
-  prefixes: [Linking.createURL('/'), 'ulam://'],
+  prefixes: [Linking.createURL('/'), 'ulamhub://'],
   config: {
     screens: {
       SharedRecipe: 'recipe/:rowId',
+      KitchenJoin: 'kitchen/join',
+      ShareIntent: 'shareintent',
     },
+  },
+  subscribe(listener) {
+    const onReceiveURL = ({ url }: { url: string }) => listener(url);
+    const stateSub = ShareIntentModule?.addListener('onStateChange', (event) => {
+      if (event.value === 'pending') listener(`${getScheme()}://shareintent`);
+    });
+    const urlSub = Linking.addEventListener('url', onReceiveURL);
+    return () => {
+      stateSub?.remove();
+      urlSub.remove();
+    };
+  },
+  async getInitialURL() {
+    if (ShareIntentModule?.hasShareIntent(getShareExtensionKey())) {
+      return `${Constants.expoConfig?.scheme}://shareintent`;
+    }
+    return (await Linking.getLinkingURL()) ?? null;
   },
 };
 
@@ -61,13 +85,15 @@ export default function App() {
   if (!ready) return null;
 
   return (
-    <SafeAreaProvider onLayout={onLayoutRootView}>
-      <AuthProvider>
-        <NavigationContainer linking={linking}>
-          <StatusBar style="dark" />
-          <RootNavigator />
-        </NavigationContainer>
-      </AuthProvider>
-    </SafeAreaProvider>
+    <ShareIntentProvider>
+      <SafeAreaProvider onLayout={onLayoutRootView}>
+        <AuthProvider>
+          <NavigationContainer linking={linking}>
+            <StatusBar style="dark" />
+            <RootNavigator />
+          </NavigationContainer>
+        </AuthProvider>
+      </SafeAreaProvider>
+    </ShareIntentProvider>
   );
 }

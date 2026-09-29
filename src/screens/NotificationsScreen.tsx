@@ -43,9 +43,9 @@ export function NotificationsScreen({ navigation }: Props) {
 
         const kitchenItems: Group['items'] = requests.map((r) => ({
           t: `${r.fromUserName} wants to add ${r.recipeName} to their cookbook`,
-          s: 'Tap to review in My Kitchen',
+          s: 'Tap to review in Kitchen',
           dot: colors.tealLink,
-          onPress: () => navigation.navigate('MyKitchen'),
+          onPress: () => navigation.navigate('Kitchen'),
         }));
 
         const next: Group[] = [

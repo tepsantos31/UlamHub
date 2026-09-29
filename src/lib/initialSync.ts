@@ -30,12 +30,20 @@ import {
 } from './sync';
 
 export async function runInitialSync(): Promise<void> {
-  // Recipes: multi-row, so "empty" means zero rows came back.
+  // Recipes: multi-row, so "empty" means zero rows came back. Remote wins
+  // for anything it already has, but a local user-added recipe remote
+  // doesn't know about yet (e.g. an earlier background push silently
+  // failed — see saveRecipe's .catch) gets pushed up and kept, rather than
+  // being wiped out by treating remote as the sole source of truth. That
+  // silent-overwrite was the likely cause of recipes "disappearing".
   const remoteRecipes = await pullRecipes();
+  const local = await listRecipes();
   if (remoteRecipes && remoteRecipes.length > 0) {
-    await setJSON(KEYS.recipes, remoteRecipes);
+    const remoteIds = new Set(remoteRecipes.map((r) => r.id));
+    const localOnly = local.filter((r) => r.userAdded && !remoteIds.has(r.id));
+    await Promise.all(localOnly.map((r) => pushRecipe(r)));
+    await setJSON(KEYS.recipes, [...remoteRecipes, ...localOnly]);
   } else {
-    const local = await listRecipes();
     await Promise.all(local.map((r) => pushRecipe(r)));
   }
 

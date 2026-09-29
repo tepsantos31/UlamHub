@@ -42,7 +42,6 @@ export function QuizScreen({ navigation }: Props) {
 
   return (
     <Screen withTabBarSpace={false} contentContainerStyle={{ paddingBottom: 140 }}>
-      <Text style={styles.eyebrow}>PERSONALIZE · STEP 3 OF 3</Text>
       <Text style={styles.title}>Let's tune your kitchen</Text>
       <Text style={styles.body}>This feeds your recommendations. You can change everything later in Settings.</Text>
 
@@ -90,8 +89,7 @@ export function QuizScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  eyebrow: { fontSize: 13, fontFamily: fonts.bodyBold, color: colors.tealDark, letterSpacing: 0.4 },
-  title: { fontFamily: fonts.heading, fontSize: 27, color: colors.ink, marginTop: 6, letterSpacing: -0.3 },
+  title: { fontFamily: fonts.heading, fontSize: 27, color: colors.ink, marginTop: 0, letterSpacing: -0.3 },
   body: { fontSize: 14, color: colors.sageMuted, marginTop: 6, lineHeight: 21 },
   label: { fontFamily: fonts.bodyBold, fontSize: 15, marginTop: 28, marginBottom: 12, color: colors.ink },
   wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, TextInput, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -20,10 +20,18 @@ const METHODS: { key: MethodKey; title: string; desc: string; icon: string; tint
   { key: 'photo', title: 'Scan a photo', desc: 'AI reads handwritten or printed recipes', icon: '📷', tint: '#E9EBDD' },
 ];
 
-export function AddRecipeScreen({ navigation }: Props) {
-  const [method, setMethod] = useState<MethodKey | null>(null);
-  const [url, setUrl] = useState('');
+export function AddRecipeScreen({ route, navigation }: Props) {
+  const sharedUrl = route.params?.sharedUrl;
+  const [method, setMethod] = useState<MethodKey | null>(sharedUrl ? 'url' : null);
+  const [url, setUrl] = useState(sharedUrl ?? '');
   const [loading, setLoading] = useState(false);
+
+  // Arrived here via the Android share sheet (see ShareIntentScreen) —
+  // go straight into the same import flow a pasted link would trigger.
+  useEffect(() => {
+    if (sharedUrl) runUrlImport(sharedUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sharedUrl]);
 
   const pick = async (key: MethodKey) => {
     setMethod(key);
@@ -54,12 +62,13 @@ export function AddRecipeScreen({ navigation }: Props) {
     }
   };
 
-  const runUrlImport = async () => {
-    if (!url.trim()) return;
+  const runUrlImport = async (overrideUrl?: string) => {
+    const target = (overrideUrl ?? url).trim();
+    if (!target) return;
     setLoading(true);
     try {
-      const extracted = await extractRecipe({ url: url.trim() });
-      navigation.replace('AddRecipeReview', { method: 'url', extracted, sourceUrl: url.trim() });
+      const extracted = await extractRecipe({ url: target });
+      navigation.replace('AddRecipeReview', { method: 'url', extracted, sourceUrl: target });
     } catch (e: any) {
       Alert.alert('Extraction failed', e?.message ?? 'Could not reach the AI backend. Is the server running?');
     } finally {
@@ -107,7 +116,7 @@ export function AddRecipeScreen({ navigation }: Props) {
             keyboardType="url"
             style={styles.urlInput}
           />
-          <PillButton label="Continue" onPress={runUrlImport} loading={loading} style={{ marginTop: 12 }} />
+          <PillButton label="Continue" onPress={() => runUrlImport()} loading={loading} style={{ marginTop: 12 }} />
         </View>
       )}
 

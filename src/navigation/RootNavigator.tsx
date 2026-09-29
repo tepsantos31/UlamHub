@@ -17,11 +17,13 @@ import { LeftoverAlchemistScreen } from '../screens/LeftoverAlchemistScreen';
 import { IngredientScannerScreen } from '../screens/IngredientScannerScreen';
 import { PartyPlannerScreen } from '../screens/PartyPlannerScreen';
 import { MyRecipesScreen } from '../screens/MyRecipesScreen';
-import { MyKitchenScreen } from '../screens/MyKitchenScreen';
+import { KitchenScreen } from '../screens/KitchenScreen';
+import { KitchenJoinScreen } from '../screens/KitchenJoinScreen';
 import { MemberKitchenScreen } from '../screens/MemberKitchenScreen';
 import { SharedRecipeScreen } from '../screens/SharedRecipeScreen';
 import { SupportChatScreen } from '../screens/SupportChatScreen';
 import { LegalScreen } from '../screens/LegalScreen';
+import { ShareIntentScreen } from '../screens/ShareIntentScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -44,11 +46,13 @@ export function RootNavigator() {
       <Stack.Screen name="IngredientScanner" component={IngredientScannerScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="PartyPlanner" component={PartyPlannerScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="MyRecipes" component={MyRecipesScreen} />
-      <Stack.Screen name="MyKitchen" component={MyKitchenScreen} />
+      <Stack.Screen name="Kitchen" component={KitchenScreen} />
+      <Stack.Screen name="KitchenJoin" component={KitchenJoinScreen} />
       <Stack.Screen name="MemberKitchen" component={MemberKitchenScreen} />
       <Stack.Screen name="SharedRecipe" component={SharedRecipeScreen} />
       <Stack.Screen name="SupportChat" component={SupportChatScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="Legal" component={LegalScreen} />
+      <Stack.Screen name="ShareIntent" component={ShareIntentScreen} />
     </Stack.Navigator>
   );
 }

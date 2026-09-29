@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, Image, TextInput, Alert, StyleSheet } from 'react-native';
+import { View, Text, Image, TextInput, Pressable, Alert, StyleSheet } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/types';
 import { colors, fonts } from '../../theme/theme';
 import { PillButton } from '../../components/PillButton';
 import { Screen } from '../../components/Screen';
+import { EyeIcon, EyeOffIcon, GoogleIcon } from '../../components/Icon';
 import { supabaseConfigured } from '../../lib/supabase';
-import { signInWithPassword, signUpWithPassword, signInWithMagicLink } from '../../lib/auth';
+import { signInWithPassword, signUpWithPassword, signInWithMagicLink, signInWithGoogle } from '../../lib/auth';
 import { runInitialSync } from '../../lib/initialSync';
 import { getOnboarding } from '../../storage/onboarding';
 
@@ -18,7 +19,8 @@ export function AuthScreen({ navigation }: Props) {
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState<'password' | 'magic' | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState<'password' | 'magic' | 'google' | null>(null);
 
   // If Supabase isn't configured yet, fall back to the old "just move on"
   // behavior rather than blocking onboarding on a setup step the user hasn't
@@ -81,6 +83,18 @@ export function AuthScreen({ navigation }: Props) {
     }
   };
 
+  const submitGoogle = async () => {
+    setLoading('google');
+    try {
+      await signInWithGoogle(mode === 'signup');
+      await afterSignedIn();
+    } catch (e: any) {
+      Alert.alert('Google sign-in failed', e?.message ?? 'Something went wrong.');
+    } finally {
+      setLoading(null);
+    }
+  };
+
   return (
     <Screen scroll={false} withTabBarSpace={false} contentContainerStyle={{ paddingTop: 96 }}>
       <View style={styles.logo}>
@@ -124,15 +138,19 @@ export function AuthScreen({ navigation }: Props) {
             keyboardType="email-address"
             style={styles.input}
           />
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Password"
-            placeholderTextColor={colors.tertiaryText}
-            secureTextEntry
-            style={[styles.input, { marginTop: 10 }]}
-          />
-
+          <View style={[styles.passwordRow, { marginTop: 10 }]}>
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Password"
+              placeholderTextColor={colors.tertiaryText}
+              secureTextEntry={!showPassword}
+              style={styles.passwordInput}
+            />
+            <Pressable onPress={() => setShowPassword((v) => !v)} hitSlop={10} style={styles.eyeBtn}>
+              {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+            </Pressable>
+          </View>
           <View style={{ flex: 1 }} />
           <View style={{ gap: 12 }}>
             <PillButton
@@ -148,6 +166,21 @@ export function AuthScreen({ navigation }: Props) {
               loading={loading === 'magic'}
               disabled={loading !== null}
             />
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+            <Pressable
+              onPress={submitGoogle}
+              disabled={loading !== null}
+              style={[styles.googleBtn, loading !== null && { opacity: 0.6 }]}
+            >
+              <GoogleIcon />
+              <Text style={styles.googleBtnText}>
+                {loading === 'google' ? 'Connecting…' : mode === 'signup' ? 'Sign up with Google' : 'Continue with Google'}
+              </Text>
+            </Pressable>
           </View>
         </>
       )}
@@ -198,5 +231,36 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyMedium,
     marginTop: 16,
   },
+  passwordRow: {
+    height: 52,
+    backgroundColor: colors.white,
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  passwordInput: {
+    flex: 1,
+    height: '100%',
+    paddingHorizontal: 16,
+    fontSize: 15,
+    color: colors.ink,
+    fontFamily: fonts.bodyMedium,
+  },
+  eyeBtn: { paddingHorizontal: 14, height: '100%', alignItems: 'center', justifyContent: 'center' },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.divider },
+  dividerText: { fontSize: 12.5, color: colors.tertiaryText, fontFamily: fonts.bodySemiBold },
+  googleBtn: {
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.divider,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  googleBtnText: { fontSize: 14.5, fontFamily: fonts.bodyBold, color: colors.ink },
   legal: { textAlign: 'center', fontSize: 12, color: colors.tertiaryText, marginTop: 20, lineHeight: 18 },
 });

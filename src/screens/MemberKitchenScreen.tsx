@@ -1,9 +1,9 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, Pressable, Modal, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { colors, fonts, radii, shadow } from '../theme/theme';
+import { colors, fonts, radii } from '../theme/theme';
 import { Screen } from '../components/Screen';
 import { HeaderBar } from '../components/HeaderBar';
 import { PillButton } from '../components/PillButton';
@@ -25,7 +25,7 @@ async function copyIntoCookbook(recipe: Recipe): Promise<string> {
 }
 
 export function MemberKitchenScreen({ route, navigation }: Props) {
-  const { memberId, memberName } = route.params;
+  const { memberId, kitchenName } = route.params;
   const [recipes, setRecipes] = useState<Recipe[] | null>(null);
   const [selected, setSelected] = useState<Recipe | null>(null);
   const [request, setRequest] = useState<RecipeRequest | null | undefined>(undefined); // undefined = loading
@@ -101,9 +101,63 @@ export function MemberKitchenScreen({ route, navigation }: Props) {
     }
   };
 
+  if (selected) {
+    return (
+      <Screen>
+        <HeaderBar onBack={() => setSelected(null)} />
+        <View style={styles.badgeRow}>
+          <Text style={[styles.badge, { backgroundColor: colors.mint, color: colors.tealLink }]}>{selected.country}</Text>
+          <Text style={[styles.badge, { backgroundColor: colors.gold, color: colors.goldText }]}>{selected.type}</Text>
+        </View>
+        <Text style={styles.detailName}>{selected.name}</Text>
+        <Text style={styles.detailSub}>
+          ⏱ {selected.time}m · {selected.ingredients.length} ingredients · from {kitchenName}
+        </Text>
+
+        <Text style={styles.h2}>Ingredients</Text>
+        <View style={{ gap: 8 }}>
+          {selected.ingredients.map((ing, i) => (
+            <Text key={i} style={styles.ingredientLine}>
+              • {ing.qty} {ing.unit} {ing.name}
+            </Text>
+          ))}
+        </View>
+
+        <Text style={styles.h2}>Steps</Text>
+        <View style={{ gap: 14 }}>
+          {selected.steps.map((s) => (
+            <View key={s.n} style={styles.stepRow}>
+              <Text style={styles.stepNum}>{s.n}</Text>
+              <Text style={styles.stepText}>{s.text}</Text>
+            </View>
+          ))}
+        </View>
+
+        {request === undefined ? (
+          <ActivityIndicator color={colors.tealDark} style={{ marginTop: 24 }} />
+        ) : request?.status === 'pending' ? (
+          <View style={[styles.statusPill, { backgroundColor: colors.gold }]}>
+            <Text style={[styles.statusPillText, { color: colors.goldText }]}>Requested — waiting for {kitchenName} to approve</Text>
+          </View>
+        ) : request?.status === 'approved' ? (
+          <PillButton label={busy ? 'Adding…' : 'Add to my cookbook'} onPress={finishApprovedCopy} loading={busy} style={{ marginTop: 24 }} />
+        ) : request?.status === 'declined' ? (
+          <>
+            <View style={[styles.statusPill, { backgroundColor: colors.coralBg }]}>
+              <Text style={[styles.statusPillText, { color: colors.coralSoft }]}>{kitchenName} declined this request</Text>
+            </View>
+            <PillButton label="Request again" onPress={sendRequest} loading={busy} variant="secondary" style={{ marginTop: 10 }} />
+          </>
+        ) : (
+          <PillButton label={busy ? 'Sending…' : 'Request to Share'} onPress={sendRequest} loading={busy} style={{ marginTop: 24 }} />
+        )}
+      </Screen>
+    );
+  }
+
   return (
     <Screen>
-      <HeaderBar title={`${memberName}'s Kitchen`} onBack={() => navigation.goBack()} />
+      <HeaderBar title={kitchenName} onBack={() => navigation.goBack()} />
 
       {recipes === null ? (
         <ActivityIndicator color={colors.tealDark} style={{ marginTop: 40 }} />
@@ -111,7 +165,10 @@ export function MemberKitchenScreen({ route, navigation }: Props) {
         <View style={styles.emptyBox}>
           <Text style={{ fontSize: 30 }}>📖</Text>
           <Text style={styles.emptyTitle}>Nothing here yet</Text>
-          <Text style={styles.emptyBody}>{memberName} hasn't added any recipes yet.</Text>
+          <Text style={styles.emptyBody}>
+            No recipes from {kitchenName} yet — only recipes they've created, imported, or saved show up here, not the
+            built-in cuisine library everyone already has.
+          </Text>
         </View>
       ) : (
         <View style={styles.grid}>
@@ -120,41 +177,6 @@ export function MemberKitchenScreen({ route, navigation }: Props) {
           ))}
         </View>
       )}
-
-      <Modal visible={!!selected} animationType="slide" transparent onRequestClose={() => setSelected(null)}>
-        <Pressable style={styles.modalScrim} onPress={() => setSelected(null)} />
-        {selected && (
-          <View style={styles.modalSheet}>
-            <View style={styles.badgeRow}>
-              <Text style={[styles.badge, { backgroundColor: colors.mint, color: colors.tealLink }]}>{selected.country}</Text>
-              <Text style={[styles.badge, { backgroundColor: colors.gold, color: colors.goldText }]}>{selected.type}</Text>
-            </View>
-            <Text style={styles.modalName}>{selected.name}</Text>
-            <Text style={styles.modalSub}>
-              {selected.ingredients.length} ingredients · {selected.steps.length} steps · {selected.time}m
-            </Text>
-
-            {request === undefined ? (
-              <ActivityIndicator color={colors.tealDark} style={{ marginTop: 20 }} />
-            ) : request?.status === 'pending' ? (
-              <View style={[styles.statusPill, { backgroundColor: colors.gold }]}>
-                <Text style={[styles.statusPillText, { color: colors.goldText }]}>Requested — waiting for {memberName} to approve</Text>
-              </View>
-            ) : request?.status === 'approved' ? (
-              <PillButton label={busy ? 'Adding…' : 'Add to my cookbook'} onPress={finishApprovedCopy} loading={busy} style={{ marginTop: 20 }} />
-            ) : request?.status === 'declined' ? (
-              <>
-                <View style={[styles.statusPill, { backgroundColor: colors.coralBg }]}>
-                  <Text style={[styles.statusPillText, { color: colors.coralSoft }]}>{memberName} declined this request</Text>
-                </View>
-                <PillButton label="Request again" onPress={sendRequest} loading={busy} variant="secondary" style={{ marginTop: 10 }} />
-              </>
-            ) : (
-              <PillButton label={busy ? 'Sending…' : 'Request to add'} onPress={sendRequest} loading={busy} style={{ marginTop: 20 }} />
-            )}
-          </View>
-        )}
-      </Modal>
     </Screen>
   );
 }
@@ -164,12 +186,15 @@ const styles = StyleSheet.create({
   emptyBox: { alignItems: 'center', marginTop: 60, paddingHorizontal: 30, gap: 8 },
   emptyTitle: { fontFamily: fonts.heading, fontSize: 18, color: colors.ink, marginTop: 4 },
   emptyBody: { fontSize: 13.5, color: colors.sageMuted, textAlign: 'center', lineHeight: 20 },
-  modalScrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
-  modalSheet: { backgroundColor: colors.screenBg, borderTopLeftRadius: radii.xxl, borderTopRightRadius: radii.xxl, padding: 22, paddingBottom: 34 },
-  badgeRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
+  badgeRow: { flexDirection: 'row', gap: 8, marginTop: 16 },
   badge: { fontSize: 11, fontFamily: fonts.bodyExtraBold, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 9, overflow: 'hidden' },
-  modalName: { fontFamily: fonts.heading, fontSize: 22, color: colors.ink, letterSpacing: -0.3 },
-  modalSub: { fontSize: 13, color: colors.secondaryText, marginTop: 8, fontFamily: fonts.bodySemiBold },
-  statusPill: { marginTop: 20, borderRadius: radii.lg, paddingVertical: 13, paddingHorizontal: 16, alignItems: 'center' },
+  detailName: { fontFamily: fonts.heading, fontSize: 26, color: colors.ink, letterSpacing: -0.3, marginTop: 12 },
+  detailSub: { fontSize: 13, color: colors.secondaryText, marginTop: 8, fontFamily: fonts.bodySemiBold },
+  h2: { fontFamily: fonts.heading, fontSize: 18, color: colors.ink, marginTop: 24, marginBottom: 10 },
+  ingredientLine: { fontSize: 14, color: colors.ink, lineHeight: 21 },
+  stepRow: { flexDirection: 'row', gap: 10 },
+  stepNum: { width: 22, fontFamily: fonts.bodyBold, color: colors.tealLink, fontSize: 14 },
+  stepText: { flex: 1, fontSize: 14, color: colors.ink, lineHeight: 21 },
+  statusPill: { marginTop: 24, borderRadius: radii.lg, paddingVertical: 13, paddingHorizontal: 16, alignItems: 'center' },
   statusPillText: { fontSize: 13, fontFamily: fonts.bodyExtraBold, textAlign: 'center' },
 });

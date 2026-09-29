@@ -147,13 +147,13 @@ export function HomeScreen() {
         ))}
       </View>
 
-      <Pressable onPress={() => navigation.navigate('MyKitchen')} style={[styles.kitchenBanner, shadow.card]}>
+      <Pressable onPress={() => navigation.navigate('Kitchen')} style={[styles.kitchenBanner, shadow.card]}>
         <View style={styles.kitchenIcon}>
           <Text style={{ fontSize: 20 }}>👨‍🍳</Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.kitchenTitle}>My Kitchen</Text>
-          <Text style={styles.kitchenBody}>Invite your crew, browse each other's recipes</Text>
+          <Text style={styles.kitchenTitle}>Kitchen</Text>
+          <Text style={styles.kitchenBody}>Join a kitchen and browse each other's recipes</Text>
         </View>
         <Text style={styles.kitchenArrow}>→</Text>
       </Pressable>

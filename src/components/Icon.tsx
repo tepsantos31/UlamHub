@@ -128,3 +128,61 @@ export function BookmarkIcon({ size = 22, color = '#17302D' }: IconProps) {
     </Svg>
   );
 }
+
+export function EyeIcon({ size = 20, color = '#8B9686' }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"
+        stroke={color}
+        strokeWidth={1.9}
+        strokeLinejoin="round"
+      />
+      <Circle cx="12" cy="12" r="3.2" stroke={color} strokeWidth={1.9} />
+    </Svg>
+  );
+}
+
+export function EyeOffIcon({ size = 20, color = '#8B9686' }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M3 3l18 18M9.9 5.3C10.6 5.1 11.3 5 12 5c6.4 0 10 7 10 7-.6 1.1-1.6 2.5-3 3.7M6.2 6.8C4 8.3 2.5 10.5 2 12c0 0 3.6 7 10 7 1.5 0 2.8-.4 4-1"
+        stroke={color}
+        strokeWidth={1.9}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M9.9 14.1a3.2 3.2 0 0 0 4.2-4.2"
+        stroke={color}
+        strokeWidth={1.9}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+export function GoogleIcon({ size = 18 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M23.5 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.47a5.53 5.53 0 0 1-2.4 3.63v3h3.87c2.27-2.09 3.56-5.17 3.56-8.82z"
+        fill="#4285F4"
+      />
+      <Path
+        d="M12 24c3.24 0 5.96-1.07 7.94-2.91l-3.87-3c-1.08.72-2.45 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.96H1.27v3.11A12 12 0 0 0 12 24z"
+        fill="#34A853"
+      />
+      <Path
+        d="M5.27 14.28A7.2 7.2 0 0 1 4.89 12c0-.79.14-1.56.38-2.28V6.61H1.27A12 12 0 0 0 0 12c0 1.94.46 3.77 1.27 5.39l4-3.11z"
+        fill="#FBBC05"
+      />
+      <Path
+        d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.69 1.27 6.61l4 3.11C6.22 6.86 8.87 4.75 12 4.75z"
+        fill="#EA4335"
+      />
+    </Svg>
+  );
+}

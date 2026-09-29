@@ -3,7 +3,6 @@ import { Recipe, PlanDay, GroceryGroup, SettingsState, OnboardingState, ProfileS
 
 interface SyncContext {
   userId: string;
-  scopeId: string; // household_id if in one, else the user's own id
 }
 
 // Every push/pull below is a no-op when Supabase isn't configured yet, or
@@ -13,13 +12,11 @@ async function getContext(): Promise<SyncContext | null> {
   const { data } = await supabase.auth.getSession();
   const userId = data.session?.user.id;
   if (!userId) return null;
-  const { data: profile } = await supabase.from('profiles').select('household_id').eq('id', userId).maybeSingle();
-  const scopeId = (profile as { household_id: string | null } | null)?.household_id ?? userId;
-  return { userId, scopeId };
+  return { userId };
 }
 
 // Personal-only tables (settings, onboarding) are keyed by owner_id, never
-// shared with a household — distinct from the scope_id tables above.
+// shared with a kitchen — distinct from the scope_id tables above.
 async function pushPersonal(table: string, column: string, value: unknown) {
   const ctx = await getContext();
   if (!ctx) return;
@@ -45,12 +42,7 @@ export async function pushRecipe(recipe: Recipe): Promise<void> {
   await supabase
     .from('recipes')
     .upsert(
-      {
-        id: recipe.id,
-        owner_id: ctx.userId,
-        household_id: ctx.scopeId !== ctx.userId ? ctx.scopeId : null,
-        data: portable,
-      },
+      { id: recipe.id, owner_id: ctx.userId, data: portable },
       { onConflict: 'id,owner_id' },
     )
     .then(() => {});
@@ -94,9 +86,9 @@ export async function pullRecipes(): Promise<Recipe[] | null> {
   return data.map((row) => row.data as Recipe);
 }
 
-/** A specific kitchen crew-mate's recipes, read-only. RLS only returns rows
- * if the caller actually shares a kitchen (household_id) with that member —
- * an unrelated user's id here just comes back empty, not an error. */
+/** A specific kitchen crew-mate's recipes, in full — access is gated purely
+ * by kitchen_members existing (which under the approval-based join flow only
+ * happens once both sides are mutually connected); RLS enforces this. */
 export async function fetchKitchenMemberRecipes(memberId: string): Promise<Recipe[]> {
   if (!supabaseConfigured) return [];
   const { data, error } = await supabase.from('recipes').select('data').eq('owner_id', memberId);
@@ -115,19 +107,19 @@ export async function shareRecipe(recipe: Recipe): Promise<string | null> {
   const { data, error } = await supabase
     .from('recipes')
     .upsert(
-      {
-        id: recipe.id,
-        owner_id: ctx.userId,
-        household_id: ctx.scopeId !== ctx.userId ? ctx.scopeId : null,
-        data: portable,
-        is_shared: true,
-      },
+      { id: recipe.id, owner_id: ctx.userId, data: portable, is_shared: true },
       { onConflict: 'id,owner_id' },
     )
     .select('row_id')
     .single();
   if (error || !data) return null;
   return (data as { row_id: string }).row_id;
+}
+
+export async function deleteRecipeRemote(id: string): Promise<void> {
+  const ctx = await getContext();
+  if (!ctx) return;
+  await supabase.from('recipes').delete().eq('id', id).eq('owner_id', ctx.userId).then(() => {});
 }
 
 /** Reads a shared recipe by its row_id — works even when signed out, since
@@ -203,7 +195,7 @@ export const pullPlan = () => pullOwn<PlanDay[]>('meal_plans', 'days');
 export const pushGrocery = (groups: GroceryGroup[]) => pushOwn('grocery_lists', 'groups', groups);
 export const pullGrocery = () => pullOwn<GroceryGroup[]>('grocery_lists', 'groups');
 
-// ---- personal-only documents (never shared with a household) ----
+// ---- personal-only documents (never shared with a kitchen) ----
 
 export const pushSettings = (settings: SettingsState) => pushPersonal('settings', 'data', settings);
 export const pullSettings = () => pullPersonal<SettingsState>('settings', 'data');

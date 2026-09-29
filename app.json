@@ -9,7 +9,10 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ulamhub.ulamhub"
+      "bundleIdentifier": "com.ulamhub.ulamhub",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.ulamhub.ulamhub",
@@ -31,9 +34,26 @@
         "expo-image-picker",
         {
           "photosPermission": "UlamHub uses your photos to let you add a cover photo to a recipe or scan a handwritten/printed recipe with AI.",
-          "cameraPermission": "UlamHub uses your camera to scan an ingredient or take a photo for a recipe."
+          "cameraPermission": "UlamHub uses your camera to scan an ingredient or take a photo for a recipe.",
+          "microphonePermission": false
         }
-      ]
-    ]
+      ],
+      [
+        "expo-share-intent",
+        {
+          "androidIntentFilters": [
+            "text/*"
+          ],
+          "disableIOS": true
+        }
+      ],
+      "expo-web-browser"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "b44bf17f-2bdd-4468-ab6f-8f8a0b643ea4"
+      }
+    },
+    "owner": "klicked"
   }
 }

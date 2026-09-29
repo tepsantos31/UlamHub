@@ -13,18 +13,22 @@ const SLIDES = [
   {
     title: 'Bring every recipe home',
     body: "Import from Instagram, TikTok, YouTube, or a photo of grandma's handwritten notes — AI turns it into a clean recipe card.",
+    photo: require('../../../assets/dishes/adobo.jpg'),
   },
   {
     title: 'Cook cuisines from around the world',
     body: 'Filipino, Italian, American, Mexican and more — with local names and ingredient glossaries.',
+    photo: require('../../../assets/dishes/sinigang.jpg'),
   },
   {
     title: 'Let AI plan your week',
     body: 'Meal plans that respect your budget, pantry, and dietary needs — down to the grocery list.',
+    photo: require('../../../assets/dishes/pinakbet.jpg'),
   },
   {
-    title: 'Build your kitchen crew',
-    body: 'Create a kitchen and invite other subscribers — browse what everyone in your crew is cooking.',
+    title: 'Share your favorite recipes',
+    body: 'Send any recipe with a link — friends and family can save it straight to their own cookbook, no account needed to view it.',
+    photo: require('../../../assets/dishes/bicol.jpg'),
   },
 ];
 
@@ -41,7 +45,7 @@ export function CarouselScreen({ navigation }: Props) {
   return (
     <View style={{ flex: 1, backgroundColor: colors.screenBg }}>
       <View style={styles.imageArea}>
-        <PlaceholderImage style={{ flex: 1 }} />
+        <PlaceholderImage source={SLIDES[slide].photo} style={{ flex: 1 }} />
         <Pressable style={[styles.skip, { top: insets.top + 16 }]} onPress={() => navigation.navigate('OnboardingAuth')}>
           <Text style={styles.skipText}>Skip</Text>
         </Pressable>

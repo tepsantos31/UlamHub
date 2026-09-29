@@ -25,7 +25,7 @@ export function Screen({ children, scroll = true, scrollEnabled = true, withTabB
     return (
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={insets.top}
       >
         <View style={[styles.flex, { backgroundColor: colors.screenBg }, padding, style]}>{children}</View>
@@ -35,7 +35,7 @@ export function Screen({ children, scroll = true, scrollEnabled = true, withTabB
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={insets.top}
     >
       <ScrollView

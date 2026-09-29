@@ -20,5 +20,10 @@ export const supabase = createClient(url || 'https://placeholder.supabase.co', a
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+    // Without this, signInWithOAuth defaults to the "implicit" flow, which
+    // redirects back with tokens in a URL *fragment* (#access_token=...).
+    // signInWithGoogle() in auth.tsx expects a ?code= query param to exchange
+    // for a session — that's the "pkce" flow, so it has to be explicit here.
+    flowType: 'pkce',
   },
 });
