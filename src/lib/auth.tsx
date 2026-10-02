@@ -27,6 +27,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const handleSession = (next: Session | null) => {
     setSession(next);
+    // onAuthStateChange also fires on things that aren't a real sign-in/out —
+    // e.g. a silent token refresh still calls back with a session. hadSession
+    // is the only way to tell "this is a *new* session" from "same session,
+    // just re-reported" so the one-time sync/purchases/kitchen setup below
+    // doesn't re-run on every refresh.
     const justSignedIn = !!next && !hadSession.current;
     const justSignedOut = !next && hadSession.current;
     hadSession.current = !!next;
@@ -131,7 +136,7 @@ export async function signInWithGoogle(allowAccountCreation: boolean): Promise<v
     const isNewAccount = createdAt > 0 && Math.abs(lastSignInAt - createdAt) < 5000;
     if (isNewAccount) {
       await supabase.auth.signOut();
-      throw new Error("We couldn't find a UlamHub account for this Google account — tap \"Create account\" to sign up first.");
+      throw new Error("We couldn't find a Lutopia account for this Google account — tap \"Create account\" to sign up first.");
     }
   }
 }

@@ -75,7 +75,7 @@ export function IngredientScannerScreen({ navigation }: Props) {
         <PremiumGate
           icon="🔍"
           title="Ingredient Scanner is a Premium tool"
-          body="Identifying ingredients from a photo uses Kitchen AI — subscribe to UlamHub Premium to unlock it."
+          body="Identifying ingredients from a photo uses Kitchen AI — subscribe to Lutopia Premium to unlock it."
           onGoPremium={() => navigation.navigate('Paywall')}
         />
       ) : (

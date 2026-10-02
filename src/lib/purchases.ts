@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import Purchases, { CustomerInfo, PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
 import { getSettings, setSettings } from '../storage/settings';
 
@@ -82,10 +82,33 @@ async function applyEntitlement(customerInfo: CustomerInfo): Promise<void> {
   const settings = await getSettings();
   if (entitlement) {
     const plan: 'monthly' | 'annual' = entitlement.productIdentifier.toLowerCase().includes('annual') ? 'annual' : 'monthly';
-    await setSettings({ ...settings, plan, planExpiresAt: entitlement.expirationDate ?? undefined });
+    // willRenew is false once the user cancels through the App Store/Play
+    // Store — the entitlement stays active (and stays in this branch) until
+    // its expirationDate actually passes, which is what keeps features
+    // unlocked through the end of the period they already paid for.
+    await setSettings({ ...settings, plan, planExpiresAt: entitlement.expirationDate ?? undefined, planCancelled: !entitlement.willRenew });
   } else if (settings.plan) {
     // RevenueCat says nothing is active any more (expired/refunded/cancelled
     // and lapsed) — clear the locally-cached plan rather than trusting stale data.
-    await setSettings({ ...settings, plan: null, planExpiresAt: undefined });
+    await setSettings({ ...settings, plan: null, planExpiresAt: undefined, planCancelled: false });
   }
+}
+
+/** Real subscriptions can only be cancelled through the platform's own
+ * subscription management UI — neither the app nor RevenueCat can cancel an
+ * App Store/Play Store subscription directly. This just opens that screen;
+ * syncEntitlementToSettings() picks up the resulting willRenew change next
+ * time it runs (e.g. when the Profile screen refocuses). */
+export function openSubscriptionManagement(): Promise<void> {
+  const url = Platform.OS === 'ios' ? 'https://apps.apple.com/account/subscriptions' : 'https://play.google.com/store/account/subscriptions';
+  return Linking.openURL(url);
+}
+
+/** Demo-mode only (no RevenueCat keys configured) — there's no real store
+ * subscription to cancel, so this just flags the mock one as non-renewing.
+ * Deliberately leaves plan/planExpiresAt untouched: access continues exactly
+ * as a real cancellation would, through the end of the current period. */
+export async function cancelDemoSubscription(): Promise<void> {
+  const settings = await getSettings();
+  await setSettings({ ...settings, planCancelled: true });
 }

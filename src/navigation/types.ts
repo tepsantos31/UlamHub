@@ -16,7 +16,9 @@ export type RootStackParamList = {
   Paywall: undefined;
   LeftoverAlchemist: undefined;
   IngredientScanner: undefined;
-  PartyPlanner: undefined;
+  PartyPlanner: { selectedRecipeIds?: string[] } | undefined;
+  SelectPartyDishes: { limit: number; initialSelectedIds: string[] };
+  EditDayPlan: { dayIndex: number };
   MyRecipes: undefined;
   Kitchen: undefined;
   KitchenJoin: { code?: string } | undefined;

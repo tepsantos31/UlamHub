@@ -1,5 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// The "uh_" prefix is a leftover from the app's original "UlamHub" name.
+// Changing it would orphan every value already written to a device's
+// AsyncStorage (a fresh key reads back empty), so it stays as internal
+// plumbing even though the app is now "Lutopia".
 export const KEYS = {
   onboarding: 'uh_onboarding',
   recipes: 'uh_recipes',
@@ -9,6 +13,7 @@ export const KEYS = {
   profile: 'uh_profile',
   chat: 'uh_chat',
   supportChat: 'uh_support_chat',
+  partyPlan: 'uh_party_plan',
 } as const;
 
 export async function getJSON<T>(key: string, fallback: T): Promise<T> {
@@ -17,6 +22,8 @@ export async function getJSON<T>(key: string, fallback: T): Promise<T> {
     if (raw == null) return fallback;
     return JSON.parse(raw) as T;
   } catch {
+    // Corrupted or unexpectedly-shaped JSON on disk shouldn't crash the
+    // screen that reads it — fall back to the caller's default instead.
     return fallback;
   }
 }

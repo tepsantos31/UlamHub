@@ -59,7 +59,7 @@ export function PaywallScreen({ navigation }: Props) {
     const settings = await getSettings();
     // Resubscribing always starts a fresh full period from today, whether
     // the old one had already lapsed or not — same as a real renewal would.
-    await setSettings({ ...settings, plan: pick, planExpiresAt: computeExpiryDate(pick) });
+    await setSettings({ ...settings, plan: pick, planExpiresAt: computeExpiryDate(pick), planCancelled: false });
     Alert.alert(
       'Demo only',
       'This is a local mock — no real purchase happened (RevenueCat isn’t configured on this build yet). Your plan is saved locally though, including a real expiry date: created/shared/imported recipes lock again once that date passes, unless you resubscribe.',
@@ -112,7 +112,7 @@ export function PaywallScreen({ navigation }: Props) {
         <View style={styles.logo}>
           <Text style={{ fontSize: 28 }}>✨</Text>
         </View>
-        <Text style={styles.title}>UlamHub Premium</Text>
+        <Text style={styles.title}>Lutopia Premium</Text>
         <Text style={styles.subtitle}>Cook without limits — every cuisine, every tool</Text>
       </View>
 
@@ -138,15 +138,15 @@ export function PaywallScreen({ navigation }: Props) {
           {plans.map((p) => {
             const sel = pick === p.key;
             return (
-              <Pressable key={p.key} onPress={() => setPick(p.key)} style={[styles.planCard, { backgroundColor: sel ? colors.deepGreen : colors.white, borderColor: sel ? colors.deepGreen : colors.borderMuted }]}>
+              <Pressable key={p.key} onPress={() => setPick(p.key)} style={[styles.planCard, { backgroundColor: sel ? colors.white : colors.deepGreenLight, borderColor: sel ? colors.white : 'rgba(255,255,255,0.14)' }]}>
                 {'note' in p && p.note && (
-                  <View style={[styles.noteBadge, { backgroundColor: sel ? colors.teal : colors.mint }]}>
-                    <Text style={[styles.noteBadgeText, { color: sel ? colors.deepGreenLight : colors.tealLink }]}>{p.note}</Text>
+                  <View style={[styles.noteBadge, { backgroundColor: sel ? colors.mint : colors.teal }]}>
+                    <Text style={[styles.noteBadgeText, { color: sel ? colors.tealLink : colors.deepGreenLight }]}>{p.note}</Text>
                   </View>
                 )}
-                <Text style={[styles.planName, { color: sel ? colors.mint : colors.ink }]}>{p.name}</Text>
-                <Text style={[styles.planPrice, { color: sel ? colors.mint : colors.ink }]}>{p.price}</Text>
-                <Text style={[styles.planPer, { color: sel ? colors.tealDark : colors.secondaryText }]}>{p.per}</Text>
+                <Text style={[styles.planName, { color: sel ? colors.ink : colors.mint }]}>{p.name}</Text>
+                <Text style={[styles.planPrice, { color: sel ? colors.ink : colors.mint }]}>{p.price}</Text>
+                <Text style={[styles.planPer, { color: sel ? colors.secondaryText : colors.tealDark }]}>{p.per}</Text>
               </Pressable>
             );
           })}

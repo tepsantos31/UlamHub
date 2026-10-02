@@ -11,7 +11,7 @@ import { PlaceholderImage } from '../components/PlaceholderImage';
 import { Ingredient, Recipe } from '../types/models';
 import { makeRecipeId, saveRecipe, listRecipes } from '../storage/recipes';
 import { getSettings } from '../storage/settings';
-import { generateRecipePhoto } from '../api/client';
+import { generateRecipePhoto, estimateNutrition } from '../api/client';
 import { canAddRecipe, FREE_RECIPE_CAP, isSubscriptionActive } from '../utils/subscription';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddRecipeReview'>;
@@ -44,6 +44,7 @@ export function AddRecipeReviewScreen({ route, navigation }: Props) {
 
   const [photoUri, setPhotoUri] = useState<string | undefined>(undefined);
   const [generatingPhoto, setGeneratingPhoto] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [name, setName] = useState(extracted?.name ?? '');
   const [sourceUrl, setSourceUrl] = useState(initialSourceUrl ?? extracted?.sourceUrl ?? '');
   const [country, setCountry] = useState(extracted?.country ?? 'Filipino');
@@ -140,7 +141,7 @@ export function AddRecipeReviewScreen({ route, navigation }: Props) {
     }
     const settings = await getSettings();
     if (!isSubscriptionActive(settings)) {
-      Alert.alert('Premium feature', 'Generating a photo with AI is available to UlamHub Premium members.', [
+      Alert.alert('Premium feature', 'Generating a photo with AI is available to Lutopia Premium members.', [
         { text: 'Not now', style: 'cancel' },
         { text: 'Go Premium', onPress: () => navigation.navigate('Paywall') },
       ]);
@@ -175,13 +176,31 @@ export function AddRecipeReviewScreen({ route, navigation }: Props) {
     if (!canAddRecipe(settings, existing)) {
       Alert.alert(
         'Recipe limit reached',
-        `Free accounts can save up to ${FREE_RECIPE_CAP} recipes. Subscribe to UlamHub Premium for unlimited recipes.`,
+        `Free accounts can save up to ${FREE_RECIPE_CAP} recipes. Subscribe to Lutopia Premium for unlimited recipes.`,
         [
           { text: 'Not now', style: 'cancel' },
           { text: 'Go Premium', onPress: () => navigation.navigate('Paywall') },
         ],
       );
       return;
+    }
+    setSaving(true);
+    const finalIngredients = ingredients.filter((i) => i.name.trim());
+    let kcal = extracted?.kcal ?? 0;
+    let nutrition = extracted?.nutrition ?? { protein: 0, carbs: 0, fat: 0, sodium: 0, fiber: 0 };
+    // Manually-typed recipes never went through AI extraction, so nothing has
+    // estimated their calories yet — do that now, from the ingredients the
+    // user just entered. Best-effort: not signed in, offline, or an AI
+    // hiccup shouldn't block saving, so this just falls back to the zeros
+    // above rather than failing the save.
+    if (!extracted) {
+      try {
+        const est = await estimateNutrition({ ingredients: finalIngredients, servings: parseInt(servings, 10) || 4 });
+        kcal = est.kcal;
+        nutrition = est.nutrition;
+      } catch {
+        // fall back to zeros
+      }
     }
     const id = makeRecipeId(name);
     const recipe: Recipe = {
@@ -191,7 +210,7 @@ export function AddRecipeReviewScreen({ route, navigation }: Props) {
       region: region.trim() || undefined,
       type,
       time: parseInt(time, 10) || 30,
-      kcal: extracted?.kcal ?? 0,
+      kcal,
       rating: 0,
       cooks: 0,
       budget: '$$',
@@ -200,11 +219,11 @@ export function AddRecipeReviewScreen({ route, navigation }: Props) {
       servingsBase: parseInt(servings, 10) || 4,
       sourceUrl: sourceUrl.trim() || undefined,
       photoUri,
-      ingredients: ingredients.filter((i) => i.name.trim()),
+      ingredients: finalIngredients,
       steps: steps
         .filter((s) => s.text.trim())
         .map(({ id, ...s }, idx) => ({ ...s, n: idx + 1 })),
-      nutrition: extracted?.nutrition ?? { protein: 0, carbs: 0, fat: 0, sodium: 0, fiber: 0 },
+      nutrition,
       saucePairings: [],
       flavorBalance: [
         { label: 'Sour', val: 40, color: '#8BAF3E' },
@@ -214,6 +233,7 @@ export function AddRecipeReviewScreen({ route, navigation }: Props) {
       userAdded: true,
     };
     await saveRecipe(recipe);
+    setSaving(false);
     navigation.replace('RecipeDetail', { recipeId: id });
   };
 
@@ -352,7 +372,13 @@ export function AddRecipeReviewScreen({ route, navigation }: Props) {
         <Text style={styles.addLink}>＋ Add step</Text>
       </Pressable>
 
-      <PillButton label="Save recipe" onPress={save} disabled={!canSave} style={{ marginTop: 26 }} />
+      <PillButton
+        label={saving ? (extracted ? 'Saving…' : 'Estimating calories…') : 'Save recipe'}
+        onPress={save}
+        loading={saving}
+        disabled={!canSave || saving}
+        style={{ marginTop: 26 }}
+      />
     </Screen>
   );
 }

@@ -1,18 +1,17 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { colors, fonts, radii, shadow } from '../theme/theme';
 import { Screen } from '../components/Screen';
-import { Chip } from '../components/Chip';
 import { SearchIcon } from '../components/Icon';
 import { RecipeCard } from '../components/RecipeCard';
 import { Recipe, SettingsState } from '../types/models';
 import { listRecipes } from '../storage/recipes';
 import { getSettings } from '../storage/settings';
-import { COUNTRIES, ULAM } from '../storage/seed';
+import { COUNTRIES } from '../storage/seed';
 import { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { canAccessRecipe } from '../utils/subscription';
 
@@ -73,12 +72,6 @@ export function BrowseScreen() {
         />
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-        {ULAM.map((u) => (
-          <Chip key={u} label={u} active={filter === u} onPress={() => setFilter(u)} small />
-        ))}
-      </ScrollView>
-
       <Text style={styles.sectionTitle}>Cook by cuisine</Text>
       <View style={styles.countryGrid}>
         {COUNTRIES.map((c, i) => (
@@ -122,7 +115,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   searchInput: { flex: 1, fontSize: 14.5, color: colors.ink, fontFamily: fonts.bodyMedium },
-  chipRow: { gap: 8, marginTop: 16, paddingVertical: 2 },
   sectionTitle: { fontFamily: fonts.heading, fontSize: 19, color: colors.ink, marginTop: 24, marginBottom: 12 },
   countryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 11 },
   countryCard: { width: '48%', borderRadius: radii.lg, padding: 15, height: 78, justifyContent: 'center' },

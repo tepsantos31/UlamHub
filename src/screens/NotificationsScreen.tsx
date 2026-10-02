@@ -8,7 +8,8 @@ import { Screen } from '../components/Screen';
 import { HeaderBar } from '../components/HeaderBar';
 import { getPlan } from '../storage/plan';
 import { listRecipes } from '../storage/recipes';
-import { getIncomingRequests } from '../lib/kitchen';
+import { getSettings } from '../storage/settings';
+import { getIncomingRequests, getIncomingKitchenJoinRequests } from '../lib/kitchen';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Notifications'>;
 
@@ -26,7 +27,13 @@ export function NotificationsScreen({ navigation }: Props) {
   useFocusEffect(
     useCallback(() => {
       (async () => {
-        const [plan, recipes, requests] = await Promise.all([getPlan(), listRecipes(), getIncomingRequests().catch(() => [])]);
+        const settings = await getSettings();
+        const [plan, recipes, recipeRequests, joinRequests] = await Promise.all([
+          getPlan(),
+          listRecipes(),
+          getIncomingRequests().catch(() => []),
+          getIncomingKitchenJoinRequests().catch(() => []),
+        ]);
         const byId = new Map(recipes.map((r) => [r.id, r]));
         const todayName = WEEKDAYS[new Date().getDay()];
         const today = plan.find((d) => d.day === todayName);
@@ -41,12 +48,24 @@ export function NotificationsScreen({ navigation }: Props) {
           }
         }
 
-        const kitchenItems: Group['items'] = requests.map((r) => ({
-          t: `${r.fromUserName} wants to add ${r.recipeName} to their cookbook`,
-          s: 'Tap to review in Kitchen',
-          dot: colors.tealLink,
-          onPress: () => navigation.navigate('Kitchen'),
-        }));
+        // "Social notifications" in Profile covers both of these request
+        // kinds — off means this whole group is skipped.
+        const kitchenItems: Group['items'] = settings.notif.social
+          ? [
+              ...joinRequests.map((r) => ({
+                t: `${r.fromUserName} wants to join ${r.kitchenName}`,
+                s: 'Tap to review in Kitchen',
+                dot: colors.tealLink,
+                onPress: () => navigation.navigate('Kitchen'),
+              })),
+              ...recipeRequests.map((r) => ({
+                t: `${r.fromUserName} wants to add ${r.recipeName} to their cookbook`,
+                s: 'Tap to review in Kitchen',
+                dot: colors.tealLink,
+                onPress: () => navigation.navigate('Kitchen'),
+              })),
+            ]
+          : [];
 
         const next: Group[] = [
           { title: 'Meal reminders', items: mealItems.length ? mealItems : [{ t: 'No meals planned for today yet', s: 'Open Planner to add some', dot: colors.tertiaryText }] },

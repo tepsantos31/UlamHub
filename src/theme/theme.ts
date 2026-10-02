@@ -7,16 +7,20 @@ export const colors = {
   ink: '#17302D',
   inkSoft: '#24423E',
 
-  deepGreen: '#0E3B39',
-  deepGreenLight: '#14524E',
+  deepGreen: '#295B53',
+  deepGreenLight: '#326F65',
   black: '#1E1E1B',
   nearBlack: '#1C1C1A',
 
-  teal: '#43C1B4',
-  tealDark: '#34A79A',
-  tealLink: '#17897B',
-  mint: '#D2ECE7',
-  mintText: '#2C534C',
+  // Shades/tints of the same main theme hue (deepGreen) rather than a
+  // separate teal accent hue — kept as distinct tokens since call sites
+  // rely on the lightness steps (e.g. a bright accent on a deepGreen page,
+  // or text legible on white), just no longer a visually different color.
+  teal: '#3FA696',
+  tealDark: '#429487',
+  tealLink: '#295B53',
+  mint: '#DFECEA',
+  mintText: '#295B53',
 
   sage: '#7C8A6E',
   sageMuted: '#6D7A62',

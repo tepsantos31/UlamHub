@@ -2,7 +2,7 @@ import { getJSON, setJSON, KEYS } from './db';
 import { ChatMessage } from '../types/models';
 
 const DEFAULT_CHAT: ChatMessage[] = [
-  { role: 'ai', text: "Hi! I'm your UlamHub cook. Tell me what's in your kitchen — or what you're craving." },
+  { role: 'ai', text: "Hi! I'm your Lutopia cook. Tell me what's in your kitchen — or what you're craving." },
 ];
 
 export async function getChat(): Promise<ChatMessage[]> {
@@ -14,4 +14,9 @@ export async function appendChat(messages: ChatMessage[]): Promise<ChatMessage[]
   const next = [...existing, ...messages];
   await setJSON(KEYS.chat, next);
   return next;
+}
+
+export async function clearChat(): Promise<ChatMessage[]> {
+  await setJSON(KEYS.chat, DEFAULT_CHAT);
+  return DEFAULT_CHAT;
 }

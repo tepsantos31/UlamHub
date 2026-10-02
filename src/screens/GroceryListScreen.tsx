@@ -5,9 +5,10 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, fonts, radii, shadow } from '../theme/theme';
 import { Screen } from '../components/Screen';
 import { ToggleSwitch } from '../components/ToggleSwitch';
+import { PillButton } from '../components/PillButton';
 import { ShareIcon } from '../components/Icon';
 import { GroceryGroup } from '../types/models';
-import { getGrocery, toggleGroceryItem, addManualItem, regenerateFromPlan } from '../storage/grocery';
+import { getGrocery, toggleGroceryItem, addManualItem, regenerateFromPlan, clearGrocery } from '../storage/grocery';
 import { getPlan } from '../storage/plan';
 import { listRecipes } from '../storage/recipes';
 import { getOnboarding, setOnboarding } from '../storage/onboarding';
@@ -54,7 +55,7 @@ export function GroceryListScreen() {
 
   const shareList = () => {
     const lines = groups.flatMap((g) => [`${g.name}:`, ...g.items.map((it) => `  ${it.checked ? '✓' : '•'} ${it.n} ${it.q}`.trim())]);
-    Share.share({ message: lines.join('\n') || 'My UlamHub grocery list is empty right now.' });
+    Share.share({ message: lines.join('\n') || 'My Lutopia grocery list is empty right now.' });
   };
 
   const findNearestStore = () => {
@@ -63,6 +64,21 @@ export function GroceryListScreen() {
     Linking.openURL(url).catch(() => {
       Alert.alert('Could not open Maps', "Your device doesn't seem to have a maps app or browser available.");
     });
+  };
+
+  const onClear = () => {
+    if (total === 0) return;
+    Alert.alert('Clear grocery list', "This removes every item currently on your list. Items still in this week's meal plan will come back next time you open this screen.", [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Clear list',
+        style: 'destructive',
+        onPress: async () => {
+          const next = await clearGrocery();
+          setGroups(next);
+        },
+      },
+    ]);
   };
 
   const onAddManual = async () => {
@@ -164,6 +180,8 @@ export function GroceryListScreen() {
           <Text style={styles.addManualText}>＋ Add item manually</Text>
         </Pressable>
       )}
+
+      {total > 0 && <PillButton label="Clear list" onPress={onClear} variant="secondary" style={{ marginTop: 24 }} />}
     </Screen>
   );
 }

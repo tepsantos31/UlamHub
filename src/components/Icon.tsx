@@ -113,7 +113,7 @@ export function CartIcon({ size = 21, color = '#fff' }: IconProps) {
   );
 }
 
-export function SendIcon({ size = 20, color = '#D2ECE7', fill = '#43C1B4' }: IconProps & { fill?: string }) {
+export function SendIcon({ size = 20, color = '#DFECEA', fill = '#3FA696' }: IconProps & { fill?: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Path d="M4 12l16-8-6 16-3-6-7-2z" stroke={color} strokeWidth={1.8} strokeLinejoin="round" fill={fill} />

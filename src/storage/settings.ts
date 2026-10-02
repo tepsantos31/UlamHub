@@ -4,10 +4,21 @@ import { pushSettings as pushSettingsRemote, pushProfile } from '../lib/sync';
 
 const DEFAULT_SETTINGS: SettingsState = {
   unit: 'metric',
-  notif: { mealRem: true, grocery: false, social: true },
+  notif: { party: true, social: true },
   plan: null,
 };
 
+// Older saved settings stored `mealRem`/`grocery` instead of `party` (from
+// before notifications were simplified to just party reminders + social
+// requests). Default `party` to true for a device with pre-existing settings
+// so party reminders don't silently stop firing after this change ships.
+function migrateNotif(notif: any): SettingsState['notif'] {
+  return { party: notif?.party ?? true, social: notif?.social ?? true };
+}
+
+// Placeholder identity shown before a real profile is ever saved — not real
+// user data. Like any default passed to getJSON, once something is written
+// to KEYS.profile this fallback is never consulted again for that device.
 const DEFAULT_PROFILE: ProfileState = {
   name: 'Samantha Cruz',
   handle: '@sam.kusina',
@@ -15,7 +26,8 @@ const DEFAULT_PROFILE: ProfileState = {
 };
 
 export async function getSettings(): Promise<SettingsState> {
-  return getJSON<SettingsState>(KEYS.settings, DEFAULT_SETTINGS);
+  const s = await getJSON<SettingsState>(KEYS.settings, DEFAULT_SETTINGS);
+  return { ...s, notif: migrateNotif(s.notif) };
 }
 
 export async function setSettings(s: SettingsState): Promise<void> {

@@ -25,6 +25,9 @@ export function MainTabs() {
         <Tab.Screen name="Grocery" component={GroceryListScreen} />
         <Tab.Screen name="Profile" component={ProfileSettingsScreen} />
       </Tab.Navigator>
+      {/* Rendered as a sibling of the tab navigator, not inside any one
+          screen, so the floating support bubble stays on top of all 5 main
+          tabs instead of disappearing when you switch between them. */}
       <SupportChatHead />
     </View>
   );

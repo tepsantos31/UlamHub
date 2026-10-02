@@ -1,10 +1,13 @@
 import { getJSON, setJSON, KEYS } from './db';
-import { seedGrocery } from './seed';
 import { GroceryGroup, PlanDay, Recipe, MealSlot } from '../types/models';
 import { pushGrocery } from '../lib/sync';
 
 const GROUP_ORDER = ['Produce', 'Meat', 'Seafood', 'Pantry & Condiments'];
 
+// There's no ingredient database to look up — grouping is a cheap keyword
+// guess instead. Order matters below: an ingredient is tested against
+// Seafood, then Meat, then Produce, so a word that could plausibly belong
+// to more than one list resolves to whichever category is checked first.
 const SEAFOOD_WORDS = ['shrimp', 'fish', 'tanigue', 'bangus', 'tilapia', 'squid', 'crab', 'prawn', 'bagoong'];
 const MEAT_WORDS = ['chicken', 'pork', 'beef', 'thigh', 'belly', 'meat', 'liver'];
 const PRODUCE_WORDS = [
@@ -17,11 +20,13 @@ function categorize(name: string): string {
   if (SEAFOOD_WORDS.some((w) => n.includes(w))) return 'Seafood';
   if (MEAT_WORDS.some((w) => n.includes(w))) return 'Meat';
   if (PRODUCE_WORDS.some((w) => n.includes(w))) return 'Produce';
+  // Anything unrecognized is assumed to be a pantry staple/condiment rather
+  // than a fresh ingredient — the safer default for an unknown item.
   return 'Pantry & Condiments';
 }
 
 export async function getGrocery(): Promise<GroceryGroup[]> {
-  return getJSON<GroceryGroup[]>(KEYS.grocery, seedGrocery());
+  return getJSON<GroceryGroup[]>(KEYS.grocery, []);
 }
 
 export async function setGrocery(groups: GroceryGroup[]): Promise<void> {
@@ -38,10 +43,18 @@ export async function toggleGroceryItem(groupIndex: number, itemIndex: number): 
   return next;
 }
 
+export async function clearGrocery(): Promise<GroceryGroup[]> {
+  await setGrocery([]);
+  return [];
+}
+
 export async function addManualItem(name: string, qty: string): Promise<GroceryGroup[]> {
   const groups = await getGrocery();
   const category = categorize(name);
   const idx = groups.findIndex((g) => g.name === category);
+  // manual: true protects this item from regenerateFromPlan's weekly rebuild —
+  // it isn't tied to any recipe/meal-plan slot, so without the flag it would
+  // get silently dropped the next time the Grocery List screen loads.
   const item = { n: name, q: qty || '', checked: false, manual: true };
   let next: GroceryGroup[];
   if (idx >= 0) {
@@ -75,6 +88,9 @@ export async function regenerateFromPlan(plan: PlanDay[], recipes: Recipe[]): Pr
       const recipe = byId.get(val);
       if (!recipe) continue;
       for (const ing of recipe.ingredients) {
+        // have: true means it's a pantry staple the cook is assumed to
+        // already own (soy sauce, salt, oil, etc.) — only the ingredients
+        // they'd actually need to shop for go on the derived list.
         if (ing.have) continue;
         const key = ing.name.toLowerCase();
         if (derived.has(key)) continue;
@@ -102,12 +118,18 @@ export async function regenerateFromPlan(plan: PlanDay[], recipes: Recipe[]): Pr
   return nonEmpty;
 }
 
+// The only caller (RecipeDetailScreen's "Add to grocery") already filters
+// `recipe.ingredients` down to exactly what the user checked "need to buy"
+// before calling this — so every ingredient reaching this function should be
+// added, full stop. (Do not re-check `ing.have` here: that's the recipe's
+// static seed default, and re-applying it would silently drop an ingredient
+// the user explicitly checked despite its seed data saying they already
+// have it.)
 export async function addMissingIngredientsToGrocery(recipe: Recipe): Promise<GroceryGroup[]> {
   const groups = await getGrocery();
   const next = groups.map((g) => ({ ...g, items: [...g.items] }));
   const byCategory = new Map(next.map((g) => [g.name, g]));
   for (const ing of recipe.ingredients) {
-    if (ing.have) continue;
     const category = categorize(ing.name);
     let group = byCategory.get(category);
     if (!group) {
@@ -116,7 +138,10 @@ export async function addMissingIngredientsToGrocery(recipe: Recipe): Promise<Gr
       byCategory.set(category, group);
     }
     if (!group.items.some((it) => it.n.toLowerCase() === ing.name.toLowerCase())) {
-      group.items.push({ n: ing.name, q: `${ing.qty} ${ing.unit}`.trim(), checked: false });
+      // Flagged manual so regenerateFromPlan's weekly rebuild keeps it —
+      // otherwise it's silently dropped the next time Grocery List opens,
+      // since it isn't part of this week's meal plan.
+      group.items.push({ n: ing.name, q: `${ing.qty} ${ing.unit}`.trim(), checked: false, manual: true });
     }
   }
   await setGrocery(next);

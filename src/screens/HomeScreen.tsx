@@ -74,6 +74,11 @@ export function HomeScreen() {
   const myRecipes = recipes.filter((r) => r.userAdded);
 
   const trendingCards = trending.map((t) => {
+    // A trending recipe is very often someone else's — the trending RPC only
+    // returns a few display fields (see fetchTrendingRecipes), not the full
+    // recipe, so this card is a stand-in until the user actually opens
+    // SharedRecipe to pull the whole thing. `local` covers the one case
+    // where this account happens to own/have saved that same recipe id too.
     const local = byId.get(t.id);
     const display: Recipe =
       local ?? {
@@ -147,17 +152,6 @@ export function HomeScreen() {
         ))}
       </View>
 
-      <Pressable onPress={() => navigation.navigate('Kitchen')} style={[styles.kitchenBanner, shadow.card]}>
-        <View style={styles.kitchenIcon}>
-          <Text style={{ fontSize: 20 }}>👨‍🍳</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.kitchenTitle}>Kitchen</Text>
-          <Text style={styles.kitchenBody}>Join a kitchen and browse each other's recipes</Text>
-        </View>
-        <Text style={styles.kitchenArrow}>→</Text>
-      </Pressable>
-
       <SectionHeader title="My Recipes" right="See all →" onPressRight={() => navigation.navigate('MyRecipes')} />
       {myRecipes.length > 0 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hScroll}>
@@ -214,13 +208,23 @@ export function HomeScreen() {
 
       <Pressable onPress={() => navigation.navigate('PartyPlanner')} style={styles.occasionBanner}>
         <View style={styles.occasionIcon}>
-          <Text style={{ fontSize: 22 }}>🕯️</Text>
+          <Text style={{ fontSize: 22 }}>🎉</Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.occasionEyebrow}>IN SEASON</Text>
-          <Text style={styles.occasionTitle}>Party season is here</Text>
+          <Text style={styles.occasionTitle}>Party Food Planner</Text>
           <Text style={styles.occasionBody}>Build a full party spread in one tap</Text>
         </View>
+      </Pressable>
+
+      <Pressable onPress={() => navigation.navigate('Kitchen')} style={[styles.kitchenBanner, shadow.card]}>
+        <View style={styles.kitchenIcon}>
+          <Text style={{ fontSize: 20 }}>👨‍🍳</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.kitchenTitle}>Kitchen</Text>
+          <Text style={styles.kitchenBody}>Join a kitchen and browse each other's recipes</Text>
+        </View>
+        <Text style={styles.kitchenArrow}>→</Text>
       </Pressable>
 
       <SectionHeader title="Trending in the community" />
@@ -387,7 +391,6 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   occasionIcon: { width: 48, height: 48, borderRadius: 14, backgroundColor: colors.goldChip, alignItems: 'center', justifyContent: 'center' },
-  occasionEyebrow: { fontSize: 11, fontFamily: fonts.bodyExtraBold, color: colors.goldText, letterSpacing: 0.4 },
   occasionTitle: { fontFamily: fonts.heading, fontSize: 16, color: colors.goldTextDeep, marginTop: 2 },
   occasionBody: { fontSize: 12, color: colors.goldTextMid, marginTop: 1 },
 });

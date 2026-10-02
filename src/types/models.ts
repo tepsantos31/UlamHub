@@ -39,6 +39,11 @@ export interface Ingredient {
   name: string;
   qty: number;
   unit: string;
+  // Seed-data default for "already a pantry staple, not worth shopping for"
+  // (soy sauce, salt, oil...). RecipeDetailScreen lets the user override this
+  // per-ingredient via its own toBuyFlags state before adding to groceries —
+  // this field is only ever the starting checkbox state, never read directly
+  // when deciding what to add from that screen.
   have?: boolean;
 }
 
@@ -138,12 +143,20 @@ export interface OnboardingState {
 export interface SettingsState {
   unit: 'metric' | 'imperial';
   notif: {
-    mealRem: boolean;
-    grocery: boolean;
+    // Gates whether PartyPlannerScreen actually schedules the local
+    // reminder it builds from "Remind me how many days before" — see its
+    // onSave(). Off means that date/days-before info is still saved with
+    // the party plan, it just never turns into a scheduled notification.
+    party: boolean;
+    // Gates the "Kitchen requests" group on NotificationsScreen — covers
+    // both incoming kitchen join requests and incoming recipe requests.
     social: boolean;
   };
   plan: 'monthly' | 'annual' | null;
   planExpiresAt?: string; // ISO date — when the current paid period runs out
+  // True once the user has cancelled — the plan stays active (and features
+  // stay unlocked) until planExpiresAt, it just won't renew after that.
+  planCancelled?: boolean;
 }
 
 export interface ProfileState {

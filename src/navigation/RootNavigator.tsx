@@ -16,6 +16,8 @@ import { PaywallScreen } from '../screens/PaywallScreen';
 import { LeftoverAlchemistScreen } from '../screens/LeftoverAlchemistScreen';
 import { IngredientScannerScreen } from '../screens/IngredientScannerScreen';
 import { PartyPlannerScreen } from '../screens/PartyPlannerScreen';
+import { SelectPartyDishesScreen } from '../screens/SelectPartyDishesScreen';
+import { EditDayPlanScreen } from '../screens/EditDayPlanScreen';
 import { MyRecipesScreen } from '../screens/MyRecipesScreen';
 import { KitchenScreen } from '../screens/KitchenScreen';
 import { KitchenJoinScreen } from '../screens/KitchenJoinScreen';
@@ -45,6 +47,8 @@ export function RootNavigator() {
       <Stack.Screen name="LeftoverAlchemist" component={LeftoverAlchemistScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="IngredientScanner" component={IngredientScannerScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="PartyPlanner" component={PartyPlannerScreen} options={{ animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="SelectPartyDishes" component={SelectPartyDishesScreen} />
+      <Stack.Screen name="EditDayPlan" component={EditDayPlanScreen} />
       <Stack.Screen name="MyRecipes" component={MyRecipesScreen} />
       <Stack.Screen name="Kitchen" component={KitchenScreen} />
       <Stack.Screen name="KitchenJoin" component={KitchenJoinScreen} />

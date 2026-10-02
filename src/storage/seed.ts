@@ -1,7 +1,5 @@
 import {
   Recipe,
-  PlanDay,
-  GroceryGroup,
   Country,
   Region,
   Diet,
@@ -57,8 +55,6 @@ export const SKILLS: [Skill, string][] = [
   ['pro', 'Experienced'],
 ];
 
-export const ULAM = ['All', 'Adobo', 'Sinigang', 'Kare-Kare', 'Ginataan', 'Inihaw', 'Kilawin', 'Guisado'];
-
 const adoboIngredients = [
   { name: 'Chicken thighs, bone-in', qty: 1, unit: 'kg', have: false },
   { name: 'Soy sauce', qty: 120, unit: 'ml', have: true },
@@ -104,6 +100,9 @@ const genericSaucePairings = [
   { name: 'Spiced vinegar', note: 'With red onion & cracked pepper' },
 ];
 
+// Only Chicken Adobo got fully bespoke ingredients/steps/flavor data; every
+// other seed dish reuses these generic placeholders rather than having real
+// authored content for each cuisine.
 function genericSteps(name: string): Recipe['steps'] {
   return [
     { n: 1, text: `Prep all ingredients for ${name} — wash, slice, and measure everything before you start cooking.`, sec: 0 },
@@ -124,6 +123,10 @@ function genericIngredients(): Recipe['ingredients'] {
   ];
 }
 
+// These bundled starter dishes no longer appear anywhere in the app —
+// listRecipes() (storage/recipes.ts) filters any stored recipe whose id
+// matches one of these out of what it returns. This array now exists only
+// so that id-matching filter has something to compare against.
 export const RECIPE_SEED: Recipe[] = [
   {
     id: 'adobo',
@@ -606,69 +609,6 @@ export const RECIPE_SEED: Recipe[] = [
     dietTags: [],
   },
 ];
-
-export function seedPlan(): PlanDay[] {
-  const rows: [string, string, string | null, string | null, string | null, string | null][] = [
-    ['Mon', '9', 'Champorado', 'adobo', 'Turon', 'sinigang'],
-    ['Tue', '10', 'Tapsilog', 'pinakbet', null, 'inasal'],
-    ['Wed', '11', 'Pandesal', null, 'Puto', 'karekare'],
-    ['Thu', '12', 'Arroz caldo', 'laing', 'Banana cue', null],
-    ['Fri', '13', 'Longsilog', 'bicol', null, 'kilawin'],
-    ['Sat', '14', 'Goto', 'adobo', 'Halo-halo', null],
-    ['Sun', '15', null, 'Lechon kawali', null, 'Nilagang Baka'],
-  ];
-  return rows.map(([day, date, breakfast, lunch, merienda, dinner]) => ({
-    day,
-    date,
-    breakfast,
-    lunch,
-    merienda,
-    dinner,
-  }));
-}
-
-export function seedGrocery(): GroceryGroup[] {
-  return [
-    {
-      name: 'Produce',
-      sub: '',
-      items: [
-        { n: 'Garlic', q: '2 bulbs', checked: false },
-        { n: 'Kalamansi', q: '12 pcs', checked: false },
-        { n: 'Long beans', q: '1 bundle', checked: false },
-        { n: 'Eggplant', q: '3 pcs', checked: false },
-        { n: 'Water spinach', q: '1 bundle', checked: false },
-      ],
-    },
-    {
-      name: 'Meat',
-      sub: '',
-      items: [
-        { n: 'Chicken thighs', q: '1 kg', checked: false },
-        { n: 'Pork belly', q: '750 g', checked: false },
-      ],
-    },
-    {
-      name: 'Seafood',
-      sub: '',
-      items: [
-        { n: 'Tanigue steak', q: '500 g', checked: false },
-        { n: 'Shrimp paste', q: '1 jar', checked: false },
-      ],
-    },
-    {
-      name: 'Pantry & Condiments',
-      sub: '',
-      items: [
-        { n: 'Soy sauce', q: '1 btl', checked: false },
-        { n: 'Cane vinegar', q: '1 btl', checked: false },
-        { n: 'Coconut milk', q: '2 cans', checked: false },
-        { n: 'Bay leaves', q: '1 pack', checked: false },
-        { n: 'Rice', q: '5 kg', checked: false },
-      ],
-    },
-  ];
-}
 
 export const ABROAD_SUBSTITUTIONS: [string, string][] = [
   ['Banana leaves', 'Parchment paper'],

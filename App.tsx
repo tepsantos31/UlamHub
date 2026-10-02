@@ -1,9 +1,8 @@
 import React, { useCallback, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import Constants from 'expo-constants';
-import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
+import { NavigationContainer, LinkingOptions, useNavigationContainerRef } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
-import { ShareIntentProvider, ShareIntentModule, getScheme, getShareExtensionKey } from 'expo-share-intent';
+import { ShareIntentProvider, useShareIntentContext } from 'expo-share-intent';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 import {
@@ -25,39 +24,35 @@ import { RootStackParamList } from './src/navigation/types';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
-// Handles `ulamhub://recipe/<id>` (a real standalone build), Expo Go's own
-// dev-time scheme (Linking.createURL abstracts the difference away), and —
-// on Android — someone sharing a link to UlamHub from another app (the OS
-// routes that through expo-share-intent's own fake "shareintent" URL, which
-// getInitialURL/subscribe below redirect to the ShareIntent bridge screen).
-// Only screens reachable via a shared link/URL need an entry here.
+// Handles `ulamhub://recipe/<id>` (a real standalone build) and Expo Go's
+// own dev-time scheme (Linking.createURL abstracts the difference away).
+// Someone sharing a link to Lutopia from another app is handled separately —
+// see ShareIntentWatcher below — since expo-share-intent's native "is a share
+// pending" signal (ShareIntentModule.hasShareIntent/onStateChange) is Android
+// only; its own useShareIntentContext() hook is what actually works on both
+// platforms, decoding the share via expo-linking's URL regardless of this
+// `linking` config, so ShareIntent doesn't need an entry in `screens` here.
 const linking: LinkingOptions<RootStackParamList> = {
   prefixes: [Linking.createURL('/'), 'ulamhub://'],
   config: {
     screens: {
       SharedRecipe: 'recipe/:rowId',
       KitchenJoin: 'kitchen/join',
-      ShareIntent: 'shareintent',
     },
   },
-  subscribe(listener) {
-    const onReceiveURL = ({ url }: { url: string }) => listener(url);
-    const stateSub = ShareIntentModule?.addListener('onStateChange', (event) => {
-      if (event.value === 'pending') listener(`${getScheme()}://shareintent`);
-    });
-    const urlSub = Linking.addEventListener('url', onReceiveURL);
-    return () => {
-      stateSub?.remove();
-      urlSub.remove();
-    };
-  },
-  async getInitialURL() {
-    if (ShareIntentModule?.hasShareIntent(getShareExtensionKey())) {
-      return `${Constants.expoConfig?.scheme}://shareintent`;
-    }
-    return (await Linking.getLinkingURL()) ?? null;
-  },
 };
+
+// Navigates to the ShareIntent bridge screen the moment expo-share-intent's
+// own hook reports a share is ready — this is what makes sharing work at all
+// on iOS (see comment above), and doubles as Android's trigger too now,
+// replacing the old onStateChange-based linking hack.
+function ShareIntentWatcher({ navigationRef }: { navigationRef: ReturnType<typeof useNavigationContainerRef<RootStackParamList>> }) {
+  const { hasShareIntent } = useShareIntentContext();
+  useEffect(() => {
+    if (hasShareIntent) navigationRef.current?.navigate('ShareIntent');
+  }, [hasShareIntent, navigationRef]);
+  return null;
+}
 
 export default function App() {
   const [fredokaLoaded, fredokaError] = useFredokaFonts({
@@ -82,13 +77,16 @@ export default function App() {
     if (ready) await SplashScreen.hideAsync().catch(() => {});
   }, [ready]);
 
+  const navigationRef = useNavigationContainerRef<RootStackParamList>();
+
   if (!ready) return null;
 
   return (
     <ShareIntentProvider>
+      <ShareIntentWatcher navigationRef={navigationRef} />
       <SafeAreaProvider onLayout={onLayoutRootView}>
         <AuthProvider>
-          <NavigationContainer linking={linking}>
+          <NavigationContainer ref={navigationRef} linking={linking}>
             <StatusBar style="dark" />
             <RootNavigator />
           </NavigationContainer>

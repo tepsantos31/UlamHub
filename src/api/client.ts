@@ -79,6 +79,10 @@ export function leftoverAlchemist(input: { imageBase64?: string; text?: string }
   return post<ExtractedRecipe>('/api/leftover-alchemist', input);
 }
 
+export function estimateNutrition(input: { ingredients: Ingredient[]; servings: number }): Promise<{ kcal: number; nutrition: Nutrition }> {
+  return post<{ kcal: number; nutrition: Nutrition }>('/api/estimate-nutrition', input);
+}
+
 export function generateRecipePhoto(input: {
   name: string;
   country?: string;
@@ -122,6 +126,10 @@ export interface PartyPlan {
   shoppingList: Ingredient[];
 }
 
+// Not called anywhere in the app — Party Planner now builds its spread from
+// the user's own recipes (PartyPlannerScreen) instead of generating one with
+// AI. Kept in sync with the still-present /api/party-plan backend route
+// (server/routes/partyPlan.js) pending a decision on removing both.
 export function generatePartyPlan(input: {
   guestCount: number;
   occasion: string;

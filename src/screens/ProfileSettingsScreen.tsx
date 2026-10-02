@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, Pressable, Alert, StyleSheet } from 'react-native';
+import { View, Text, Pressable, Alert, Platform, StyleSheet } from 'react-native';
 import { useFocusEffect, useNavigation, CompositeNavigationProp } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -15,6 +15,8 @@ import { clearAllLocalData } from '../storage/db';
 import { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { useAuth, signOut } from '../lib/auth';
 import { supabaseConfigured } from '../lib/supabase';
+import { getMyKitchens } from '../lib/kitchen';
+import { purchasesConfigured, openSubscriptionManagement, cancelDemoSubscription, syncEntitlementToSettings } from '../lib/purchases';
 import { deleteAccount as deleteAccountRemote } from '../api/client';
 import { isSubscriptionActive, FREE_RECIPE_CAP } from '../utils/subscription';
 
@@ -27,18 +29,30 @@ export function ProfileSettingsScreen() {
   const [onboarding, setOnboardingState] = useState<OnboardingState | null>(null);
   const [settings, setSettingsState] = useState<SettingsState | null>(null);
   const [recipeCount, setRecipeCount] = useState(0);
+  const [joinedKitchenCount, setJoinedKitchenCount] = useState(0);
   const [deleting, setDeleting] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       (async () => {
+        // Refresh entitlement status first — picks up a cancellation made
+        // through the App Store/Play Store's own subscription settings, so
+        // the "Renews"/"Cancelled" note below reflects reality when the
+        // user comes back to the app rather than only on next sign-in.
+        if (purchasesConfigured) await syncEntitlementToSettings().catch(() => {});
         const [p, o, s, recipes] = await Promise.all([getProfile(), getOnboarding(), getSettings(), listRecipes()]);
         setProfileState(p);
         setOnboardingState(o);
         setSettingsState(s);
         setRecipeCount(recipes.filter((r) => r.userAdded).length);
+        if (supabaseConfigured && session) {
+          const kitchens = await getMyKitchens().catch(() => []);
+          setJoinedKitchenCount(kitchens.filter((k) => k.myRole === 'member').length);
+        } else {
+          setJoinedKitchenCount(0);
+        }
       })();
-    }, []),
+    }, [session]),
   );
 
   if (!profile || !onboarding || !settings) return <View style={{ flex: 1, backgroundColor: colors.screenBg }} />;
@@ -79,6 +93,18 @@ export function ProfileSettingsScreen() {
         },
       },
     ]);
+  };
+
+  const goToKitchen = () => {
+    if (!supabaseConfigured) {
+      Alert.alert('Not set up yet', 'Cloud accounts aren’t configured on this build.');
+      return;
+    }
+    if (!session) {
+      Alert.alert('Sign in required', 'Log out and sign in with an account to set up your kitchen.');
+      return;
+    }
+    navigation.navigate('Kitchen');
   };
 
   const deleteAccount = () => {
@@ -129,9 +155,41 @@ export function ProfileSettingsScreen() {
   const expiryNote =
     settings.plan && settings.planExpiresAt
       ? subscriptionActive
-        ? `Renews ${new Date(settings.planExpiresAt).toLocaleDateString()}`
+        ? settings.planCancelled
+          ? `Cancelled — access until ${new Date(settings.planExpiresAt).toLocaleDateString()}`
+          : `Renews ${new Date(settings.planExpiresAt).toLocaleDateString()}`
         : `Expired ${new Date(settings.planExpiresAt).toLocaleDateString()} — created/shared recipes are locked`
       : null;
+
+  const cancelSubscription = () => {
+    const expiry = settings.planExpiresAt ? new Date(settings.planExpiresAt).toLocaleDateString() : 'your current period ends';
+    if (purchasesConfigured) {
+      Alert.alert(
+        'Cancel subscription',
+        `You'll be taken to your ${Platform.OS === 'ios' ? 'App Store' : 'Play Store'} subscription settings to cancel. You'll keep Premium access until ${expiry}.`,
+        [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'Continue', onPress: () => openSubscriptionManagement().catch(() => {}) },
+        ],
+      );
+    } else {
+      Alert.alert(
+        'Cancel subscription',
+        `Your ${settings.plan} plan won't renew, but you'll keep Premium access until ${expiry}.`,
+        [
+          { text: 'Keep subscription', style: 'cancel' },
+          {
+            text: 'Cancel subscription',
+            style: 'destructive',
+            onPress: async () => {
+              await cancelDemoSubscription();
+              setSettingsState((s) => (s ? { ...s, planCancelled: true } : s));
+            },
+          },
+        ],
+      );
+    }
+  };
 
   return (
     <Screen>
@@ -162,28 +220,38 @@ export function ProfileSettingsScreen() {
             </Text>
             <Text style={styles.statLabel}>Recipes</Text>
           </Pressable>
-          {[
-            { n: '5', l: 'Cookbooks' },
-            { n: '87', l: 'Following' },
-          ].map((s) => (
-            <View key={s.l} style={styles.statCell}>
-              <Text style={styles.statNum}>{s.n}</Text>
-              <Text style={styles.statLabel}>{s.l}</Text>
-            </View>
-          ))}
+          <Pressable style={styles.statCell} onPress={goToKitchen}>
+            <Text style={styles.statNum}>{joinedKitchenCount}</Text>
+            <Text style={styles.statLabel}>Kitchens joined</Text>
+          </Pressable>
         </View>
       </View>
 
-      <Pressable onPress={() => navigation.navigate('Paywall')} style={styles.premiumBanner}>
-        <View style={styles.premiumGlow} />
-        <View style={styles.premiumIcon}>
-          <Text style={{ fontSize: 22 }}>✨</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.premiumTitle}>Go Premium</Text>
-          <Text style={styles.premiumSub}>Unlimited imports, AI engine & Kitchen</Text>
-        </View>
-      </Pressable>
+      {!subscriptionActive ? (
+        <Pressable onPress={() => navigation.navigate('Paywall')} style={styles.premiumBanner}>
+          <View style={styles.premiumGlow} />
+          <View style={styles.premiumIcon}>
+            <Text style={{ fontSize: 22 }}>✨</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.premiumTitle}>Go Premium</Text>
+            <Text style={styles.premiumSub}>Unlimited imports, AI engine & Kitchen</Text>
+          </View>
+        </Pressable>
+      ) : (
+        settings.plan === 'monthly' && (
+          <Pressable onPress={() => navigation.navigate('Paywall')} style={styles.premiumBanner}>
+            <View style={styles.premiumGlow} />
+            <View style={styles.premiumIcon}>
+              <Text style={{ fontSize: 22 }}>💰</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.premiumTitle}>Switch to Annual</Text>
+              <Text style={styles.premiumSub}>Save 33% by paying yearly instead</Text>
+            </View>
+          </Pressable>
+        )
+      )}
 
       <SectionLabel>Preferences</SectionLabel>
       <GroupedList>
@@ -207,29 +275,17 @@ export function ProfileSettingsScreen() {
 
       <SectionLabel>Notifications</SectionLabel>
       <GroupedList>
-        <ListRow label="Meal reminders" right={<ToggleSwitch value={settings.notif.mealRem} onValueChange={() => toggleNotif('mealRem')} />} />
-        <ListRow label="Grocery reminders" right={<ToggleSwitch value={settings.notif.grocery} onValueChange={() => toggleNotif('grocery')} />} />
+        {/* Gates the reminder PartyPlannerScreen schedules from "Remind me
+            how many days before" — see onSave() there. */}
+        <ListRow label="Party reminders" right={<ToggleSwitch value={settings.notif.party} onValueChange={() => toggleNotif('party')} />} />
+        {/* Covers kitchen join requests and recipe requests — see the
+            "Kitchen requests" group on NotificationsScreen. */}
         <ListRow label="Social notifications" isLast right={<ToggleSwitch value={settings.notif.social} onValueChange={() => toggleNotif('social')} />} />
       </GroupedList>
 
       <SectionLabel>Kitchen</SectionLabel>
       <GroupedList>
-        <ListRow
-          label="Kitchen"
-          value={session ? undefined : 'Sign in to join'}
-          isLast
-          onPress={() => {
-            if (!supabaseConfigured) {
-              Alert.alert('Not set up yet', 'Cloud accounts aren’t configured on this build.');
-              return;
-            }
-            if (!session) {
-              Alert.alert('Sign in required', 'Log out and sign in with an account to set up your kitchen.');
-              return;
-            }
-            navigation.navigate('Kitchen');
-          }}
-        />
+        <ListRow label="Kitchen" value={session ? undefined : 'Sign in to join'} isLast onPress={goToKitchen} />
       </GroupedList>
 
       <SectionLabel>Account</SectionLabel>
@@ -249,6 +305,7 @@ export function ProfileSettingsScreen() {
           }
         />
         <ListRow label="Export my data" onPress={() => Alert.alert('Export', 'Your data lives on-device in AsyncStorage, and syncs to the cloud if you’re signed in.')} />
+        {subscriptionActive && !settings.planCancelled && <ListRow label="Cancel subscription" onPress={cancelSubscription} />}
         <ListRow label={deleting ? 'Deleting…' : 'Delete account'} danger isLast onPress={deleting ? () => {} : deleteAccount} />
       </GroupedList>
 

@@ -5,19 +5,6 @@ import { pushRecipe, uploadRecipePhoto, deleteRecipeRemote } from '../lib/sync';
 
 const SEED_BY_ID = new Map(RECIPE_SEED.map((r) => [r.id, r]));
 
-// Bundled dish photos are build-time assets, not user data — a phone that already
-// has recipes saved from an earlier session (before photos existed) would otherwise
-// keep showing the old cached copy forever, since AsyncStorage always wins over the
-// current RECIPE_SEED once something's been written. Always trust the current code's
-// photoAsset for known seed dishes instead of whatever got persisted historically.
-function withSeedPhoto(recipe: Recipe): Recipe {
-  const seed = SEED_BY_ID.get(recipe.id);
-  if (seed?.photoAsset && recipe.photoAsset !== seed.photoAsset) {
-    return { ...recipe, photoAsset: seed.photoAsset };
-  }
-  return recipe;
-}
-
 // Older saved recipes (before the Filipino -> multi-cuisine rebrand) were
 // persisted with `region` as the primary field and `sawsawan`/`aat` instead
 // of `saucePairings`/`flavorBalance`. Normalize on read so a device with
@@ -32,8 +19,12 @@ function migrateRecipe(recipe: any): Recipe {
 }
 
 export async function listRecipes(): Promise<Recipe[]> {
-  const stored = await getJSON<Recipe[]>(KEYS.recipes, RECIPE_SEED);
-  return stored.map(migrateRecipe).map(withSeedPhoto);
+  const stored = await getJSON<Recipe[]>(KEYS.recipes, []);
+  // Older app versions bundled starter dishes (Adobo, Sinigang, etc.) as the
+  // default value here, and saveRecipe() baked them into storage permanently
+  // the first time a user saved anything. Strip any of those bundled ids out
+  // so only recipes the user actually added ever show up.
+  return stored.filter((r) => !SEED_BY_ID.has(r.id)).map(migrateRecipe);
 }
 
 export async function getRecipe(id: string): Promise<Recipe | undefined> {
@@ -69,5 +60,8 @@ export function makeRecipeId(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
+  // Two recipes with the same name would otherwise collide on the same slug
+  // (and overwrite each other via saveRecipe's id match) — the base-36
+  // timestamp suffix keeps every id unique without needing a UUID library.
   return `${base || 'recipe'}-${Date.now().toString(36)}`;
 }

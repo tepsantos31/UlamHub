@@ -70,7 +70,7 @@ export function LeftoverAlchemistScreen({ navigation }: Props) {
         <PremiumGate
           icon="🧪"
           title="Leftover Alchemist is a Premium tool"
-          body="Turning your leftovers into a new dish uses Kitchen AI — subscribe to UlamHub Premium to unlock it."
+          body="Turning your leftovers into a new dish uses Kitchen AI — subscribe to Lutopia Premium to unlock it."
           onGoPremium={() => navigation.navigate('Paywall')}
         />
       ) : (

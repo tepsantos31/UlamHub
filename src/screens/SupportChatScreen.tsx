@@ -68,7 +68,7 @@ export function SupportChatScreen({ navigation }: Props) {
         </Pressable>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>Need Help?</Text>
-          <Text style={styles.headerStatus}>● UlamHub Support</Text>
+          <Text style={styles.headerStatus}>● Lutopia Support</Text>
         </View>
       </View>
 

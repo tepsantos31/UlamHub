@@ -121,7 +121,6 @@ export function CookModeScreen({ route, navigation }: Props) {
             <View key={i} style={[styles.dot, { backgroundColor: i <= stepIndex ? colors.teal : 'rgba(255,255,255,0.16)' }]} />
           ))}
         </View>
-        <Text style={styles.voiceHint}>🎙️ Say "next step", "set timer", or "repeat"</Text>
       </View>
 
       <View style={styles.navRow}>
@@ -161,7 +160,6 @@ const styles = StyleSheet.create({
   startTimerText: { color: colors.teal, fontFamily: fonts.bodyBold, fontSize: 15 },
   dotsRow: { flexDirection: 'row', gap: 7, marginBottom: 18 },
   dot: { flex: 1, height: 5, borderRadius: 4 },
-  voiceHint: { textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 12.5, fontFamily: fonts.bodySemiBold, marginBottom: 18 },
   navRow: { flexDirection: 'row', gap: 12 },
   prevBtn: { width: 64, height: 58, borderRadius: radii.lg, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' },
   prevBtnText: { color: colors.screenBg, fontSize: 22 },

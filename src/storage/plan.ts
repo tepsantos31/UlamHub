@@ -1,6 +1,5 @@
 import { getJSON, setJSON, KEYS } from './db';
-import { seedPlan } from './seed';
-import { PlanDay, MealSlot, Recipe, Budget } from '../types/models';
+import { PlanDay, MealSlot, Recipe } from '../types/models';
 import { pushPlan } from '../lib/sync';
 
 const DAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -20,7 +19,7 @@ function currentWeekDates(): { day: string; date: string }[] {
 }
 
 export async function getPlan(): Promise<PlanDay[]> {
-  const stored = await getJSON<PlanDay[]>(KEYS.plan, seedPlan());
+  const stored = await getJSON<PlanDay[]>(KEYS.plan, []);
   const week = currentWeekDates();
   return week.map((w, i) => ({
     day: w.day,
@@ -44,33 +43,29 @@ export async function fillSlot(dayIndex: number, slot: MealSlot, recipeIdOrText:
   return next;
 }
 
-const AUTOFILL_PICKS = ['Ginataang Gulay', 'Tinolang Manok', 'Pancit Bihon', 'Ginisang Munggo'];
-
-export async function autoFillWeek(): Promise<PlanDay[]> {
+export async function clearWeek(): Promise<PlanDay[]> {
   const plan = await getPlan();
-  const next = plan.map((d, i) => ({
-    ...d,
-    breakfast: d.breakfast || 'Champorado',
-    lunch: d.lunch || 'Ginisang Munggo',
-    merienda: d.merienda || 'Turon',
-    dinner: d.dinner || AUTOFILL_PICKS[i % AUTOFILL_PICKS.length],
-  }));
+  const next = plan.map((d) => ({ ...d, breakfast: null, lunch: null, merienda: null, dinner: null }));
   await setPlan(next);
   return next;
 }
 
-const BUDGET_VALUE: Record<Budget, number> = { $: 6, $$: 12, $$$: 20 };
-
-export function computeWeekBudget(plan: PlanDay[], recipes: Recipe[]): number {
-  const byId = new Map(recipes.map((r) => [r.id, r]));
-  let total = 0;
-  for (const day of plan) {
-    for (const slot of ['breakfast', 'lunch', 'merienda', 'dinner'] as MealSlot[]) {
-      const val = day[slot];
-      if (!val) continue;
-      const recipe = byId.get(val);
-      total += recipe ? BUDGET_VALUE[recipe.budget] : 4;
-    }
-  }
-  return total;
+/** Fills empty slots with real recipe ids cycled from the given library —
+ * previously this used hardcoded dish-name strings that matched no actual
+ * recipe, which silently broke anything keyed off a real Recipe object for
+ * an auto-filled day (grocery-list ingredients, budget totals, etc). */
+export async function autoFillWeek(recipes: Recipe[]): Promise<PlanDay[]> {
+  const plan = await getPlan();
+  if (recipes.length === 0) return plan;
+  let idx = 0;
+  const pick = () => recipes[idx++ % recipes.length].id;
+  const next = plan.map((d) => ({
+    ...d,
+    breakfast: d.breakfast || pick(),
+    lunch: d.lunch || pick(),
+    merienda: d.merienda || pick(),
+    dinner: d.dinner || pick(),
+  }));
+  await setPlan(next);
+  return next;
 }

@@ -34,7 +34,7 @@ export function SplashScreen({ navigation }: Props) {
         <Image source={require('../../assets/logo-mark.png')} style={styles.logoImage} resizeMode="contain" />
       </View>
       <View style={{ alignItems: 'center' }}>
-        <Text style={styles.title}>UlamHub</Text>
+        <Text style={styles.title}>Lutopia</Text>
         <Text style={styles.subtitle}>Discover. Cook. Share.</Text>
       </View>
       <ActivityIndicator color={colors.tealDark} style={{ marginTop: 8 }} />

@@ -26,8 +26,8 @@ export function AddRecipeScreen({ route, navigation }: Props) {
   const [url, setUrl] = useState(sharedUrl ?? '');
   const [loading, setLoading] = useState(false);
 
-  // Arrived here via the Android share sheet (see ShareIntentScreen) —
-  // go straight into the same import flow a pasted link would trigger.
+  // Arrived here via the OS share sheet (see ShareIntentScreen) — go
+  // straight into the same import flow a pasted link would trigger.
   useEffect(() => {
     if (sharedUrl) runUrlImport(sharedUrl);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -35,6 +35,9 @@ export function AddRecipeScreen({ route, navigation }: Props) {
 
   const pick = async (key: MethodKey) => {
     setMethod(key);
+    // replace, not navigate — so backing out of the review screen returns to
+    // wherever the user was before AddRecipe, skipping this method-picker
+    // screen rather than stacking it underneath.
     if (key === 'manual') {
       navigation.replace('AddRecipeReview', { method: 'manual' });
     }

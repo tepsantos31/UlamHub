@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, Pressable, ScrollView, ActivityIndicator, Alert, Image, Share, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, Alert, Image, Share, StyleSheet } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Linking from 'expo-linking';
 import { useFocusEffect } from '@react-navigation/native';
@@ -9,7 +9,7 @@ import { colors, fonts, radii, shadow } from '../theme/theme';
 import { PlaceholderImage } from '../components/PlaceholderImage';
 import { BackChevronIcon, HeartIcon, ShareIcon, BookmarkIcon } from '../components/Icon';
 import { PillButton } from '../components/PillButton';
-import { Recipe, SettingsState } from '../types/models';
+import { Ingredient, Recipe, RecipeStep, SettingsState } from '../types/models';
 import { getRecipe, saveRecipe, deleteRecipe, listRecipes } from '../storage/recipes';
 import { addMissingIngredientsToGrocery } from '../storage/grocery';
 import { getSettings } from '../storage/settings';
@@ -33,7 +33,9 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [servings, setServings] = useState(4);
   const [unit, setUnit] = useState<'metric' | 'imperial'>('metric');
-  const [haveFlags, setHaveFlags] = useState<Record<string, boolean>>({});
+  // true = checked = "I still need to buy this" = gets added to the grocery
+  // list; unchecking an ingredient means you already have it in your pantry.
+  const [toBuyFlags, setToBuyFlags] = useState<Record<string, boolean>>({});
   const [flavorTip, setFlavorTip] = useState<string | null>(null);
   const [flavorLoading, setFlavorLoading] = useState(false);
   const [addedToast, setAddedToast] = useState(false);
@@ -44,6 +46,12 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
   const [settings, setSettingsState] = useState<SettingsState | null>(null);
   const [allRecipes, setAllRecipes] = useState<Recipe[]>([]);
   const [generatingPhoto, setGeneratingPhoto] = useState(false);
+  // Ingredients and steps are edited independently — editing one doesn't
+  // put the other section into edit mode, and each saves on its own.
+  const [editingIngredients, setEditingIngredients] = useState(false);
+  const [editingSteps, setEditingSteps] = useState(false);
+  const [editIngredients, setEditIngredients] = useState<Ingredient[]>([]);
+  const [editSteps, setEditSteps] = useState<RecipeStep[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -56,10 +64,12 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
         setAllRecipes(all);
         setServings(r.servingsBase);
         setUnit(settings.unit);
-        setHaveFlags(Object.fromEntries(r.ingredients.map((i) => [i.name, !!i.have])));
+        setToBuyFlags(Object.fromEntries(r.ingredients.map((i) => [i.name, !i.have])));
         setFlavorTip(null);
         setStoryOpen(false);
         setStoryError(null);
+        setEditingIngredients(false);
+        setEditingSteps(false);
       })();
       return () => {
         mounted = false;
@@ -96,7 +106,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
   };
 
   const shareRecipe = async () => {
-    if (!requirePremium('Sharing recipes is available to UlamHub Premium members. Subscribe to share this recipe with anyone.')) return;
+    if (!requirePremium('Sharing recipes is available to Lutopia Premium members. Subscribe to share this recipe with anyone.')) return;
     setSharing(true);
     try {
       const rowId = await shareRecipeRemote(recipe);
@@ -106,12 +116,12 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
         await saveRecipe(next);
         const url = Linking.createURL(`recipe/${rowId}`);
         await Share.share({
-          message: `${recipe.name} (${recipe.country} · ${recipe.type}) — open it in UlamHub: ${url}`,
+          message: `${recipe.name} (${recipe.country} · ${recipe.type}) — open it in Lutopia: ${url}`,
           url, // iOS uses this field directly when present
         });
       } else {
         // Not signed in (or Supabase isn't configured) — no cloud copy to link to yet.
-        await Share.share({ message: `${recipe.name} (${recipe.country} · ${recipe.type}) — check it out on UlamHub!` });
+        await Share.share({ message: `${recipe.name} (${recipe.country} · ${recipe.type}) — check it out on Lutopia!` });
       }
     } finally {
       setSharing(false);
@@ -163,7 +173,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
   };
 
   const generatePhoto = async () => {
-    if (!requirePremium('Generating a photo with AI is available to UlamHub Premium members.')) return;
+    if (!requirePremium('Generating a photo with AI is available to Lutopia Premium members.')) return;
     setGeneratingPhoto(true);
     try {
       const { imageBase64 } = await generateRecipePhoto({
@@ -203,9 +213,68 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
     await saveRecipe(next);
   };
 
+  const startEditIngredients = () => {
+    setEditIngredients(recipe.ingredients.map((i) => ({ ...i })));
+    setEditingIngredients(true);
+  };
+
+  const cancelEditIngredients = () => setEditingIngredients(false);
+
+  const saveEditIngredients = async () => {
+    // Drops any row the user left blank (e.g. added one then changed their
+    // mind) rather than saving an empty ingredient.
+    const cleaned = editIngredients.filter((i) => i.name.trim());
+    if (cleaned.length === 0) {
+      Alert.alert('Missing info', 'Keep at least one ingredient.');
+      return;
+    }
+    const next = { ...recipe, ingredients: cleaned };
+    setRecipe(next);
+    setToBuyFlags(Object.fromEntries(cleaned.map((i) => [i.name, !i.have])));
+    await saveRecipe(next);
+    setEditingIngredients(false);
+  };
+
+  const startEditSteps = () => {
+    setEditSteps(recipe.steps.map((s) => ({ ...s })));
+    setEditingSteps(true);
+  };
+
+  const cancelEditSteps = () => setEditingSteps(false);
+
+  const saveEditSteps = async () => {
+    // Same blank-row drop as ingredients; steps are renumbered afterward so
+    // removing one from the middle doesn't leave a gap (step 1, 2, 4...).
+    const cleaned = editSteps.filter((s) => s.text.trim()).map((s, idx) => ({ ...s, n: idx + 1 }));
+    if (cleaned.length === 0) {
+      Alert.alert('Missing info', 'Keep at least one step.');
+      return;
+    }
+    const next = { ...recipe, steps: cleaned };
+    setRecipe(next);
+    await saveRecipe(next);
+    setEditingSteps(false);
+  };
+
+  const updateEditIngredient = (i: number, patch: Partial<Ingredient>) =>
+    setEditIngredients((prev) => prev.map((ing, idx) => (idx === i ? { ...ing, ...patch } : ing)));
+  const addEditIngredient = () => setEditIngredients((prev) => [...prev, { name: '', qty: 1, unit: 'pc' }]);
+  const removeEditIngredient = (i: number) => setEditIngredients((prev) => prev.filter((_, idx) => idx !== i));
+
+  const updateEditStep = (i: number, text: string) =>
+    setEditSteps((prev) => prev.map((s, idx) => (idx === i ? { ...s, text } : s)));
+  const addEditStep = () => setEditSteps((prev) => [...prev, { n: prev.length + 1, text: '', sec: 0 }]);
+  const removeEditStep = (i: number) => setEditSteps((prev) => prev.filter((_, idx) => idx !== i));
+
   const addMissing = async () => {
-    const missing = { ...recipe, ingredients: recipe.ingredients.filter((i) => !haveFlags[i.name]) };
-    await addMissingIngredientsToGrocery(missing);
+    // Only the checked ("still need to buy") ingredients go to the grocery
+    // list — unchecking one marks it as already in your pantry.
+    const toAdd = { ...recipe, ingredients: recipe.ingredients.filter((i) => toBuyFlags[i.name]) };
+    if (toAdd.ingredients.length === 0) {
+      Alert.alert('Nothing to add', "Check the ingredients you still need to buy, then try again.");
+      return;
+    }
+    await addMissingIngredientsToGrocery(toAdd);
     setAddedToast(true);
     setTimeout(() => setAddedToast(false), 1800);
   };
@@ -215,7 +284,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
       setFlavorTip(null);
       return;
     }
-    if (!requirePremium('Kitchen AI flavor tips are available to UlamHub Premium members.')) return;
+    if (!requirePremium('Kitchen AI flavor tips are available to Lutopia Premium members.')) return;
     setFlavorLoading(true);
     try {
       const flavorSummary = recipe.flavorBalance.map((a) => `${a.label}: ${a.val}/100`).join(', ');
@@ -235,8 +304,11 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
       setStoryOpen(false);
       return;
     }
-    if (!recipe.story && !requirePremium('Recipe Story is available to UlamHub Premium members.')) return;
+    if (!recipe.story && !requirePremium('Recipe Story is available to Lutopia Premium members.')) return;
     setStoryOpen(true);
+    // The story is generated once and saved onto the recipe itself (below) —
+    // once recipe.story exists, every later open just displays it instead of
+    // calling the AI backend again.
     if (recipe.story) return;
     setStoryLoading(true);
     setStoryError(null);
@@ -257,6 +329,9 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
     }
   };
 
+  // KitchenAIScreen auto-sends this prefill as soon as it mounts (see its
+  // prefill effect) rather than just dropping it unsent into the chat input —
+  // otherwise tapping a remix chip looked like it did nothing.
   const askRemix = (action: string) => {
     navigation.navigate('KitchenAI', { prefill: `${action}: ${recipe.name}` });
   };
@@ -361,32 +436,81 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
             </View>
           </View>
 
-          <Text style={styles.h2}>Ingredients</Text>
-          <View style={styles.card}>
-            {recipe.ingredients.map((ing, i) => {
-              const have = haveFlags[ing.name];
-              const scaled = scaleIngredient(ing.qty, ing.unit, ratio, unit);
-              return (
-                <Pressable
-                  key={ing.name}
-                  onPress={() => setHaveFlags((prev) => ({ ...prev, [ing.name]: !prev[ing.name] }))}
-                  style={[styles.ingRow, i !== recipe.ingredients.length - 1 && styles.rowBorder]}
-                >
-                  <View style={[styles.checkbox, have && { backgroundColor: colors.teal, borderColor: colors.teal }]}>
-                    {have && <Text style={styles.checkboxTick}>✓</Text>}
-                  </View>
-                  <Text style={styles.ingName}>{ing.name}</Text>
-                  <Text style={styles.ingAmount}>
-                    {scaled.qty} {scaled.unit}
-                  </Text>
-                </Pressable>
-              );
-            })}
-            <Pressable onPress={addMissing} style={styles.addMissingRow}>
-              <Text style={styles.addMissingPlus}>＋</Text>
-              <Text style={styles.addMissingText}>{addedToast ? 'Added to grocery list ✓' : 'Add missing to grocery list'}</Text>
-            </Pressable>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.h2, { marginTop: 0, marginBottom: 0 }]}>Ingredients</Text>
+            {recipe.userAdded && !editingIngredients && (
+              <Pressable onPress={startEditIngredients}>
+                <Text style={styles.editLink}>Edit</Text>
+              </Pressable>
+            )}
           </View>
+          {editingIngredients ? (
+            <View style={styles.card}>
+              {editIngredients.map((ing, i) => (
+                <View key={i} style={[styles.editIngRow, i !== editIngredients.length - 1 && styles.rowBorder]}>
+                  <TextInput
+                    value={ing.name}
+                    onChangeText={(v) => updateEditIngredient(i, { name: v })}
+                    placeholder="Ingredient"
+                    placeholderTextColor={colors.tertiaryText}
+                    style={[styles.editInput, { flex: 2 }]}
+                  />
+                  <TextInput
+                    value={String(ing.qty)}
+                    onChangeText={(v) => updateEditIngredient(i, { qty: parseFloat(v) || 0 })}
+                    placeholder="Qty"
+                    keyboardType="numeric"
+                    placeholderTextColor={colors.tertiaryText}
+                    style={[styles.editInput, { flex: 0.7 }]}
+                  />
+                  <TextInput
+                    value={ing.unit}
+                    onChangeText={(v) => updateEditIngredient(i, { unit: v })}
+                    placeholder="unit"
+                    placeholderTextColor={colors.tertiaryText}
+                    style={[styles.editInput, { flex: 0.8 }]}
+                  />
+                  <Pressable onPress={() => removeEditIngredient(i)} style={styles.editRemoveBtn}>
+                    <Text style={styles.editRemoveBtnText}>✕</Text>
+                  </Pressable>
+                </View>
+              ))}
+              <Pressable onPress={addEditIngredient} style={styles.addMissingRow}>
+                <Text style={styles.addMissingPlus}>＋</Text>
+                <Text style={styles.addMissingText}>Add ingredient</Text>
+              </Pressable>
+              <View style={styles.editActionsRow}>
+                <PillButton label="Cancel" onPress={cancelEditIngredients} variant="secondary" style={{ flex: 1 }} />
+                <PillButton label="Save changes" onPress={saveEditIngredients} style={{ flex: 1 }} />
+              </View>
+            </View>
+          ) : (
+            <View style={styles.card}>
+              {recipe.ingredients.map((ing, i) => {
+                const toBuy = toBuyFlags[ing.name];
+                const scaled = scaleIngredient(ing.qty, ing.unit, ratio, unit);
+                return (
+                  <Pressable
+                    key={ing.name}
+                    onPress={() => setToBuyFlags((prev) => ({ ...prev, [ing.name]: !prev[ing.name] }))}
+                    style={[styles.ingRow, i !== recipe.ingredients.length - 1 && styles.rowBorder]}
+                  >
+                    <View style={[styles.checkbox, toBuy && { backgroundColor: colors.teal, borderColor: colors.teal }]}>
+                      {toBuy && <Text style={styles.checkboxTick}>✓</Text>}
+                    </View>
+                    <Text style={styles.ingName}>{ing.name}</Text>
+                    <Text style={styles.ingAmount}>
+                      {scaled.qty} {scaled.unit}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+              <Pressable onPress={addMissing} style={styles.addMissingRow}>
+                <Text style={styles.addMissingPlus}>＋</Text>
+                <Text style={styles.addMissingText}>{addedToast ? 'Added to grocery list ✓' : 'Add to grocery list'}</Text>
+              </Pressable>
+            </View>
+          )}
 
           <Text style={[styles.h2, { marginBottom: 4 }]}>Sauce pairing</Text>
           <Text style={styles.h2Sub}>Dips and sauces that bring out the dish</Text>
@@ -441,24 +565,62 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
             {flavorTip && <Text style={styles.flavorTip}>{flavorTip}</Text>}
           </View>
 
-          <Text style={styles.h2}>Steps</Text>
-          <View style={{ gap: 12 }}>
-            {recipe.steps.map((st) => (
-              <View key={st.n} style={styles.stepRow}>
-                <View style={styles.stepNum}>
-                  <Text style={styles.stepNumText}>{st.n}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.stepText}>{st.text}</Text>
-                  {st.sec > 0 && (
-                    <View style={styles.stepTimerBadge}>
-                      <Text style={styles.stepTimerText}>⏱ {st.tl || formatSeconds(st.sec)}</Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-            ))}
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.h2, { marginTop: 0, marginBottom: 0 }]}>Steps</Text>
+            {recipe.userAdded && !editingSteps && (
+              <Pressable onPress={startEditSteps}>
+                <Text style={styles.editLink}>Edit</Text>
+              </Pressable>
+            )}
           </View>
+          {editingSteps ? (
+            <View style={{ gap: 10 }}>
+              {editSteps.map((st, i) => (
+                <View key={i} style={styles.editStepRow}>
+                  <View style={styles.stepNum}>
+                    <Text style={styles.stepNumText}>{i + 1}</Text>
+                  </View>
+                  <TextInput
+                    value={st.text}
+                    onChangeText={(v) => updateEditStep(i, v)}
+                    placeholder="Describe this step…"
+                    placeholderTextColor={colors.tertiaryText}
+                    multiline
+                    style={[styles.editInput, { flex: 1, minHeight: 44 }]}
+                  />
+                  <Pressable onPress={() => removeEditStep(i)} style={styles.editRemoveBtn}>
+                    <Text style={styles.editRemoveBtnText}>✕</Text>
+                  </Pressable>
+                </View>
+              ))}
+              <Pressable onPress={addEditStep}>
+                <Text style={styles.addMissingText}>＋ Add step</Text>
+              </Pressable>
+
+              <View style={styles.editActionsRow}>
+                <PillButton label="Cancel" onPress={cancelEditSteps} variant="secondary" style={{ flex: 1 }} />
+                <PillButton label="Save changes" onPress={saveEditSteps} style={{ flex: 1 }} />
+              </View>
+            </View>
+          ) : (
+            <View style={{ gap: 12 }}>
+              {recipe.steps.map((st) => (
+                <View key={st.n} style={styles.stepRow}>
+                  <View style={styles.stepNum}>
+                    <Text style={styles.stepNumText}>{st.n}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.stepText}>{st.text}</Text>
+                    {st.sec > 0 && (
+                      <View style={styles.stepTimerBadge}>
+                        <Text style={styles.stepTimerText}>⏱ {st.tl || formatSeconds(st.sec)}</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
 
           <Text style={styles.h2}>Nutrition · per serving</Text>
           <View style={styles.nutritionRow}>
@@ -591,6 +753,22 @@ const styles = StyleSheet.create({
   addMissingRow: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 13 },
   addMissingPlus: { fontSize: 16, color: colors.tealLink },
   addMissingText: { color: colors.tealLink, fontFamily: fonts.bodyBold, fontSize: 13.5 },
+  sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 26, marginBottom: 12 },
+  editLink: { color: colors.tealLink, fontFamily: fonts.bodyBold, fontSize: 13.5 },
+  editIngRow: { flexDirection: 'row', gap: 8, alignItems: 'center', paddingVertical: 10 },
+  editStepRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
+  editInput: {
+    height: 44,
+    backgroundColor: colors.screenBg,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    fontSize: 14,
+    color: colors.ink,
+    fontFamily: fonts.bodyMedium,
+  },
+  editRemoveBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.coralBg, alignItems: 'center', justifyContent: 'center' },
+  editRemoveBtnText: { color: colors.coral, fontWeight: '700' },
+  editActionsRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
   saucePairingCard: { width: 150, backgroundColor: colors.white, borderRadius: radii.lg, padding: 14 },
   saucePairingIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: colors.coralBg, alignItems: 'center', justifyContent: 'center', marginBottom: 9 },
   saucePairingName: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.ink },
@@ -609,7 +787,7 @@ const styles = StyleSheet.create({
   flavorBarLabel: { width: 96, fontSize: 12, fontFamily: fonts.bodyBold, color: colors.sageText },
   flavorBarTrack: { flex: 1, height: 9, borderRadius: 6, backgroundColor: '#EEECE3', overflow: 'hidden' },
   flavorBarFill: { height: '100%', borderRadius: 6 },
-  flavorTip: { marginTop: 14, padding: 12, borderRadius: 12, backgroundColor: colors.mint, fontSize: 12.5, color: '#2C534C', lineHeight: 18 },
+  flavorTip: { marginTop: 14, padding: 12, borderRadius: 12, backgroundColor: colors.mint, fontSize: 12.5, color: colors.mintText, lineHeight: 18 },
   stepRow: { flexDirection: 'row', gap: 13 },
   stepNum: { width: 28, height: 28, borderRadius: 9, backgroundColor: colors.deepGreen, alignItems: 'center', justifyContent: 'center' },
   stepNumText: { fontFamily: fonts.heading, fontSize: 14, color: colors.mint },
