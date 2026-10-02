@@ -50,6 +50,35 @@ export async function getCurrentOffering(): Promise<PurchasesOffering | null> {
   return offerings.current;
 }
 
+// "P7D" -> "7-day", "P1W" -> "1-week", "P3M" -> "3-month", "P1Y" -> "1-year".
+// Store-configured periods only ever use one unit + one number, so this
+// simple regex covers every real case without a full ISO 8601 parser.
+const PERIOD_UNIT_WORDS: Record<string, string> = { D: 'day', W: 'week', M: 'month', Y: 'year' };
+function isoPeriodToTrialLength(iso: string): string | null {
+  const m = /^P(\d+)([DWMY])$/.exec(iso);
+  if (!m) return null;
+  return `${m[1]}-${PERIOD_UNIT_WORDS[m[2]]}`;
+}
+
+/** Whether this specific package actually has a free trial attached in the
+ * store, and if so, how long it is — e.g. "7-day". Null for a package with
+ * no trial, or one that only has a discounted (not free) introductory price.
+ * iOS reports this on `introPrice`; Android reports it on the default
+ * subscription option's `freePhase`. Checking the real package is the only
+ * way to know — a trial is configured per-product in App Store Connect /
+ * Play Console, not something the app can assume exists. */
+export function describeFreeTrial(pkg: PurchasesPackage): string | null {
+  const introPrice = pkg.product.introPrice;
+  if (introPrice && introPrice.price === 0) {
+    return isoPeriodToTrialLength(introPrice.period);
+  }
+  const freePhase = pkg.product.defaultOption?.freePhase;
+  if (freePhase?.billingPeriod) {
+    return isoPeriodToTrialLength(freePhase.billingPeriod.iso8601);
+  }
+  return null;
+}
+
 export async function purchase(pkg: PurchasesPackage): Promise<CustomerInfo> {
   const { customerInfo } = await Purchases.purchasePackage(pkg);
   await applyEntitlement(customerInfo);

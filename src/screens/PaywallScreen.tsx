@@ -10,7 +10,7 @@ import { CloseIcon } from '../components/Icon';
 import { PillButton } from '../components/PillButton';
 import { getSettings, setSettings } from '../storage/settings';
 import { computeExpiryDate } from '../utils/subscription';
-import { purchasesConfigured, getCurrentOffering, purchase, restore } from '../lib/purchases';
+import { purchasesConfigured, getCurrentOffering, purchase, restore, describeFreeTrial } from '../lib/purchases';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Paywall'>;
 
@@ -55,6 +55,13 @@ export function PaywallScreen({ navigation }: Props) {
         }))
     : DEMO_PLANS.map((p) => ({ ...p, pkg: undefined as PurchasesPackage | undefined }));
 
+  // Demo mode has no real trial to offer — subscribeDemo() activates the
+  // full period immediately, so the button must not claim a trial exists.
+  // In real mode, whether there's a trial (and how long) depends entirely
+  // on how the currently-selected package is configured in the store.
+  const selectedPackage = plans.find((p) => p.key === pick)?.pkg;
+  const trialLength = selectedPackage ? describeFreeTrial(selectedPackage) : null;
+
   const subscribeDemo = async () => {
     const settings = await getSettings();
     // Resubscribing always starts a fresh full period from today, whether
@@ -69,14 +76,13 @@ export function PaywallScreen({ navigation }: Props) {
 
   const subscribe = async () => {
     if (!purchasesConfigured) return subscribeDemo();
-    const selected = plans.find((p) => p.key === pick)?.pkg;
-    if (!selected) {
+    if (!selectedPackage) {
       Alert.alert('Not available', 'This plan isn’t available right now — please try again shortly.');
       return;
     }
     setBusy('subscribe');
     try {
-      await purchase(selected);
+      await purchase(selectedPackage);
       navigation.goBack();
     } catch (e: any) {
       if (!e?.userCancelled) Alert.alert('Purchase failed', e?.message ?? 'Something went wrong — please try again.');
@@ -154,7 +160,7 @@ export function PaywallScreen({ navigation }: Props) {
       )}
 
       <PillButton
-        label={purchasesConfigured ? 'Subscribe' : 'Start 7-day free trial'}
+        label={trialLength ? `Start ${trialLength} free trial` : 'Subscribe'}
         onPress={subscribe}
         loading={busy === 'subscribe'}
         disabled={busy !== null || (purchasesConfigured && plans.length === 0)}
