@@ -18,7 +18,16 @@ export function SplashScreen({ navigation }: Props) {
   useEffect(() => {
     if (loading || syncing) return;
     const t = setTimeout(async () => {
+      // Splash stays mounted underneath whatever gets pushed on top of it
+      // (e.g. ShareIntentWatcher routing straight into Add Recipe mid
+      // import), so this timer keeps running even after navigation has
+      // already moved on. Resetting anyway would truncate that screen's
+      // whole stack out from under it — check we're still actually the
+      // active screen first, both before and after the async read below,
+      // since that's a second window where navigation could have moved on.
+      if (!navigation.isFocused()) return;
       const onboarding = await getOnboarding();
+      if (!navigation.isFocused()) return;
       if (onboarding.complete) {
         navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
       } else {
