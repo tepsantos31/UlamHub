@@ -7,7 +7,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { colors, fonts, radii, shadow } from '../theme/theme';
 import { PlaceholderImage } from '../components/PlaceholderImage';
-import { BackChevronIcon, HeartIcon, ShareIcon, BookmarkIcon } from '../components/Icon';
+import { BackChevronIcon, HeartIcon, ShareIcon, BookmarkIcon, PlayIcon } from '../components/Icon';
 import { PillButton } from '../components/PillButton';
 import { Ingredient, Recipe, RecipeStep, SettingsState } from '../types/models';
 import { getRecipe, saveRecipe, deleteRecipe, listRecipes } from '../storage/recipes';
@@ -676,8 +676,11 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
             </Pressable>
             <PillButton label="🍳 Start cooking" onPress={() => navigation.navigate('CookMode', { recipeId })} style={{ flex: 1 }} />
             {recipe.sourceUrl && (
+              // A chain-link glyph didn't say what tapping it does — most
+              // sources are an Instagram/TikTok/YouTube video, so a play
+              // icon makes "watch the original" obvious at a glance.
               <Pressable onPress={() => Linking.openURL(recipe.sourceUrl!)} style={[styles.sourceBtn, shadow.soft]}>
-                <Text style={{ fontSize: 16 }}>🔗</Text>
+                <PlayIcon size={18} color={colors.ink} />
               </Pressable>
             )}
           </>

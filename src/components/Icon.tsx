@@ -164,6 +164,14 @@ export function EyeOffIcon({ size = 20, color = '#8B9686' }: IconProps) {
   );
 }
 
+export function PlayIcon({ size = 18, color = '#17302D' }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M7 4.5v15l13-7.5-13-7.5z" fill={color} />
+    </Svg>
+  );
+}
+
 export function GoogleIcon({ size = 18 }: { size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
