@@ -126,13 +126,14 @@ export function GroceryListScreen() {
 
   const onClear = () => {
     if (total === 0) return;
-    Alert.alert('Clear grocery list', "This removes every item currently on your list. Items still in this week's meal plan will come back next time you open this screen.", [
+    Alert.alert('Clear grocery list', "This removes every item currently on your list. It only comes back if you change this week's meal plan.", [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Clear list',
         style: 'destructive',
         onPress: async () => {
-          const next = await clearGrocery();
+          const plan = await getPlan();
+          const next = await clearGrocery(plan);
           setGroups(next);
         },
       },

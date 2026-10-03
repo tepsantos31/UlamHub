@@ -25,6 +25,56 @@ function categorize(name: string): string {
   return 'Pantry & Condiments';
 }
 
+function formatQtyNum(n: number): string {
+  const r = Math.round(n * 100) / 100;
+  return Number.isInteger(r) ? String(r) : String(parseFloat(r.toFixed(2)));
+}
+
+function parseQty(q: string): { qty: number; unit: string } | null {
+  const m = /^(-?\d+(?:\.\d+)?)\s*(.*)$/.exec(q.trim());
+  if (!m) return null;
+  return { qty: parseFloat(m[1]), unit: m[2].trim() };
+}
+
+/** Folds a newly-needed amount into an existing display quantity — summed
+ * when the units match (two recipes both measuring garlic in cloves add up
+ * to one real total), otherwise listed side by side rather than one of them
+ * silently overwriting the other, since adding mismatched units together
+ * would just be wrong. */
+function combineQty(existingQ: string, addQty: number, addUnit: string): string {
+  const existing = parseQty(existingQ);
+  const unit = addUnit.trim();
+  if (existing && existing.unit.toLowerCase() === unit.toLowerCase()) {
+    return `${formatQtyNum(existing.qty + addQty)} ${existing.unit}`.trim();
+  }
+  return `${existingQ} + ${addQty} ${unit}`.trim();
+}
+
+// A stable fingerprint of which recipe sits in which slot — used only to
+// notice whether the meal plan has actually changed since the list was last
+// cleared (see clearGrocery/getDismissedKeys below), not stored anywhere a
+// user would see it.
+function planSignature(plan: PlanDay[]): string {
+  return plan.map((d) => `${d.day}:${d.breakfast ?? ''}|${d.lunch ?? ''}|${d.merienda ?? ''}|${d.dinner ?? ''}`).join(',');
+}
+
+interface GroceryDismissal {
+  planSignature: string;
+  keys: string[]; // lowercased ingredient names
+}
+
+/** Plan-derived ingredient names that should stay off the list because the
+ * user cleared them and nothing about the plan has changed since. The
+ * dismissal is scoped to a specific plan snapshot — the moment the plan
+ * actually changes (a swapped dish, an auto-fill, a cleared week), it's
+ * treated as stale and ignored, so a genuinely new need for that ingredient
+ * isn't suppressed forever. */
+async function getDismissedKeys(plan: PlanDay[]): Promise<Set<string>> {
+  const dismissal = await getJSON<GroceryDismissal | null>(KEYS.groceryDismissed, null);
+  if (!dismissal || dismissal.planSignature !== planSignature(plan)) return new Set();
+  return new Set(dismissal.keys);
+}
+
 export async function getGrocery(): Promise<GroceryGroup[]> {
   return getJSON<GroceryGroup[]>(KEYS.grocery, []);
 }
@@ -43,7 +93,14 @@ export async function toggleGroceryItem(groupIndex: number, itemIndex: number): 
   return next;
 }
 
-export async function clearGrocery(): Promise<GroceryGroup[]> {
+/** Empties the list. Plan-derived items (everything not flagged `manual`)
+ * are remembered as dismissed for the current plan snapshot, so
+ * regenerateFromPlan doesn't just put them straight back the next time this
+ * screen opens — only an actual change to the meal plan brings them back. */
+export async function clearGrocery(plan: PlanDay[]): Promise<GroceryGroup[]> {
+  const existing = await getGrocery();
+  const derivedKeys = existing.flatMap((g) => g.items.filter((it) => !it.manual).map((it) => it.n.toLowerCase()));
+  await setJSON<GroceryDismissal>(KEYS.groceryDismissed, { planSignature: planSignature(plan), keys: derivedKeys });
   await setGrocery([]);
   return [];
 }
@@ -80,7 +137,12 @@ export async function regenerateFromPlan(plan: PlanDay[], recipes: Recipe[]): Pr
     }
   }
 
-  const derived = new Map<string, { name: string; qty: string; category: string }>();
+  const dismissed = await getDismissedKeys(plan);
+
+  // Accumulate the amount needed across the whole week — two different
+  // dinners both calling for garlic should both count, not just whichever
+  // recipe happened to be scanned first.
+  const derived = new Map<string, { name: string; q: string; category: string }>();
   for (const day of plan) {
     for (const slot of ['breakfast', 'lunch', 'merienda', 'dinner'] as MealSlot[]) {
       const val = day[slot];
@@ -93,8 +155,13 @@ export async function regenerateFromPlan(plan: PlanDay[], recipes: Recipe[]): Pr
         // they'd actually need to shop for go on the derived list.
         if (ing.have) continue;
         const key = ing.name.toLowerCase();
-        if (derived.has(key)) continue;
-        derived.set(key, { name: ing.name, qty: `${ing.qty} ${ing.unit}`.trim(), category: categorize(ing.name) });
+        if (dismissed.has(key)) continue;
+        const current = derived.get(key);
+        if (current) {
+          current.q = combineQty(current.q, ing.qty, ing.unit);
+        } else {
+          derived.set(key, { name: ing.name, q: `${ing.qty} ${ing.unit}`.trim(), category: categorize(ing.name) });
+        }
       }
     }
   }
@@ -102,9 +169,9 @@ export async function regenerateFromPlan(plan: PlanDay[], recipes: Recipe[]): Pr
   const groups: GroceryGroup[] = GROUP_ORDER.map((name) => ({ name, sub: '', items: [] }));
   const byCategory = new Map(groups.map((g) => [g.name, g]));
 
-  for (const { name, qty, category } of derived.values()) {
+  for (const { name, q, category } of derived.values()) {
     const group = byCategory.get(category) ?? byCategory.get('Pantry & Condiments')!;
-    group.items.push({ n: name, q: qty, checked: checkedByName.get(name.toLowerCase()) ?? false });
+    group.items.push({ n: name, q, checked: checkedByName.get(name.toLowerCase()) ?? false });
   }
   for (const { category, item } of manualItems) {
     const group = byCategory.get(category) ?? byCategory.get('Pantry & Condiments')!;
@@ -137,7 +204,13 @@ export async function addMissingIngredientsToGrocery(recipe: Recipe): Promise<Gr
       next.push(group);
       byCategory.set(category, group);
     }
-    if (!group.items.some((it) => it.n.toLowerCase() === ing.name.toLowerCase())) {
+    // Adding the same ingredient from a second recipe should top up how much
+    // is needed, not get silently skipped because something with that name
+    // is already on the list.
+    const existingItem = group.items.find((it) => it.n.toLowerCase() === ing.name.toLowerCase());
+    if (existingItem) {
+      existingItem.q = combineQty(existingItem.q, ing.qty, ing.unit);
+    } else {
       // Flagged manual so regenerateFromPlan's weekly rebuild keeps it —
       // otherwise it's silently dropped the next time Grocery List opens,
       // since it isn't part of this week's meal plan.
