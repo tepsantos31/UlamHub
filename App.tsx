@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, LinkingOptions, useNavigationContainerRef } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
@@ -46,11 +46,23 @@ const linking: LinkingOptions<RootStackParamList> = {
 // own hook reports a share is ready — this is what makes sharing work at all
 // on iOS (see comment above), and doubles as Android's trigger too now,
 // replacing the old onStateChange-based linking hack.
-function ShareIntentWatcher({ navigationRef }: { navigationRef: ReturnType<typeof useNavigationContainerRef<RootStackParamList>> }) {
+function ShareIntentWatcher({
+  navigationRef,
+  navReady,
+}: {
+  navigationRef: ReturnType<typeof useNavigationContainerRef<RootStackParamList>>;
+  // The ref is non-null as soon as NavigationContainer mounts, but it isn't
+  // actually ready to navigate until a moment after that — calling
+  // navigate() before then throws "The 'navigation' object hasn't been
+  // initialized yet". On a cold launch opened directly via a share,
+  // hasShareIntent can flip true before that happens, so this effect must
+  // wait on both conditions, not just the ref being non-null.
+  navReady: boolean;
+}) {
   const { hasShareIntent } = useShareIntentContext();
   useEffect(() => {
-    if (hasShareIntent) navigationRef.current?.navigate('ShareIntent');
-  }, [hasShareIntent, navigationRef]);
+    if (hasShareIntent && navReady) navigationRef.current?.navigate('ShareIntent');
+  }, [hasShareIntent, navReady, navigationRef]);
   return null;
 }
 
@@ -78,15 +90,16 @@ export default function App() {
   }, [ready]);
 
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
+  const [navReady, setNavReady] = useState(false);
 
   if (!ready) return null;
 
   return (
     <ShareIntentProvider>
-      <ShareIntentWatcher navigationRef={navigationRef} />
+      <ShareIntentWatcher navigationRef={navigationRef} navReady={navReady} />
       <SafeAreaProvider onLayout={onLayoutRootView}>
         <AuthProvider>
-          <NavigationContainer ref={navigationRef} linking={linking}>
+          <NavigationContainer ref={navigationRef} linking={linking} onReady={() => setNavReady(true)}>
             <StatusBar style="dark" />
             <RootNavigator />
           </NavigationContainer>
