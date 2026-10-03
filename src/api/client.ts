@@ -144,6 +144,15 @@ export function getRecipeStory(input: { name: string; country: string; region?: 
   return post<{ story: string }>('/api/recipe-story', input);
 }
 
+export interface IngredientSubstitute {
+  name: string;
+  note: string;
+}
+
+export function getIngredientSubstitute(input: { name: string; recipeName?: string; context?: string }): Promise<{ substitutes: IngredientSubstitute[] }> {
+  return post<{ substitutes: IngredientSubstitute[] }>('/api/substitute-ingredient', input);
+}
+
 export async function checkHealth(): Promise<boolean> {
   try {
     const res = await fetch(`${API_BASE_URL}/api/health`);
