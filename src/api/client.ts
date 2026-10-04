@@ -75,7 +75,7 @@ export function supportChat(input: { message: string; history?: ChatHistoryItem[
   return post<{ reply: string }>('/api/support-chat', input);
 }
 
-export function leftoverAlchemist(input: { imageBase64?: string; text?: string }): Promise<ExtractedRecipe> {
+export function leftoverAlchemist(input: { imageBase64s?: string[]; text?: string; cuisine?: string }): Promise<ExtractedRecipe> {
   return post<ExtractedRecipe>('/api/leftover-alchemist', input);
 }
 
