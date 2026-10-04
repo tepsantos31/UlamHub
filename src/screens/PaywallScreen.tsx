@@ -118,7 +118,7 @@ export function PaywallScreen({ navigation }: Props) {
         <View style={styles.logo}>
           <Text style={{ fontSize: 28 }}>✨</Text>
         </View>
-        <Text style={styles.title}>Lutopia Premium</Text>
+        <Text style={styles.title}>UlamHub Premium</Text>
         <Text style={styles.subtitle}>Cook without limits — every cuisine, every tool</Text>
       </View>
 

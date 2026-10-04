@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Lutopia",
+    "name": "UlamHub",
     "slug": "ulamhub",
     "scheme": "ulamhub",
     "version": "1.0.0",
@@ -33,8 +33,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Lutopia uses your photos to let you add a cover photo to a recipe or scan a handwritten/printed recipe with AI.",
-          "cameraPermission": "Lutopia uses your camera to scan an ingredient or take a photo for a recipe.",
+          "photosPermission": "UlamHub uses your photos to let you add a cover photo to a recipe or scan a handwritten/printed recipe with AI.",
+          "cameraPermission": "UlamHub uses your camera to scan an ingredient or take a photo for a recipe.",
           "microphonePermission": false
         }
       ],

@@ -40,7 +40,7 @@ export function SharedRecipeScreen({ route, navigation }: Props) {
     if (!canAddRecipe(settings, existing)) {
       Alert.alert(
         'Recipe limit reached',
-        `Free accounts can save up to ${FREE_RECIPE_CAP} recipes. Subscribe to Lutopia Premium for unlimited recipes.`,
+        `Free accounts can save up to ${FREE_RECIPE_CAP} recipes. Subscribe to UlamHub Premium for unlimited recipes.`,
         [
           { text: 'Not now', style: 'cancel' },
           { text: 'Go Premium', onPress: () => navigation.navigate('Paywall') },

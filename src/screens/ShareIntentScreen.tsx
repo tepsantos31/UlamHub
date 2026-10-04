@@ -14,7 +14,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ShareIntent'>;
 const WAIT_TIMEOUT_MS = 4000;
 
 /** Not a real screen — a redirect target the OS lands on when someone shares
- * a link to Lutopia from another app (Instagram, TikTok, YouTube, a browser).
+ * a link to UlamHub from another app (Instagram, TikTok, YouTube, a browser).
  * Waits for the native module to hand over what was shared, then hands off
  * into the normal "Import from link" flow so it goes through the same
  * extraction + review step as a manually pasted link. */

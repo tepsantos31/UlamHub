@@ -67,7 +67,7 @@ export function GroceryListScreen() {
 
   const requirePremium = (): boolean => {
     if (settings && isSubscriptionActive(settings)) return true;
-    Alert.alert('Premium feature', 'Ingredient substitutes use Kitchen AI — subscribe to Lutopia Premium to unlock it.', [
+    Alert.alert('Premium feature', 'Ingredient substitutes use Kitchen AI — subscribe to UlamHub Premium to unlock it.', [
       { text: 'Not now', style: 'cancel' },
       { text: 'Go Premium', onPress: () => navigation.navigate('Paywall') },
     ]);
@@ -113,7 +113,7 @@ export function GroceryListScreen() {
 
   const shareList = () => {
     const lines = groups.flatMap((g) => [`${g.name}:`, ...g.items.map((it) => `  ${it.checked ? '✓' : '•'} ${it.n} ${it.q}`.trim())]);
-    Share.share({ message: lines.join('\n') || 'My Lutopia grocery list is empty right now.' });
+    Share.share({ message: lines.join('\n') || 'My UlamHub grocery list is empty right now.' });
   };
 
   const findNearestStore = () => {

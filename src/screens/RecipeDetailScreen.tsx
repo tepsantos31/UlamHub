@@ -106,7 +106,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
   };
 
   const shareRecipe = async () => {
-    if (!requirePremium('Sharing recipes is available to Lutopia Premium members. Subscribe to share this recipe with anyone.')) return;
+    if (!requirePremium('Sharing recipes is available to UlamHub Premium members. Subscribe to share this recipe with anyone.')) return;
     setSharing(true);
     try {
       const rowId = await shareRecipeRemote(recipe);
@@ -116,12 +116,12 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
         await saveRecipe(next);
         const url = Linking.createURL(`recipe/${rowId}`);
         await Share.share({
-          message: `${recipe.name} (${recipe.country} · ${recipe.type}) — open it in Lutopia: ${url}`,
+          message: `${recipe.name} (${recipe.country} · ${recipe.type}) — open it in UlamHub: ${url}`,
           url, // iOS uses this field directly when present
         });
       } else {
         // Not signed in (or Supabase isn't configured) — no cloud copy to link to yet.
-        await Share.share({ message: `${recipe.name} (${recipe.country} · ${recipe.type}) — check it out on Lutopia!` });
+        await Share.share({ message: `${recipe.name} (${recipe.country} · ${recipe.type}) — check it out on UlamHub!` });
       }
     } finally {
       setSharing(false);
@@ -173,7 +173,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
   };
 
   const generatePhoto = async () => {
-    if (!requirePremium('Generating a photo with AI is available to Lutopia Premium members.')) return;
+    if (!requirePremium('Generating a photo with AI is available to UlamHub Premium members.')) return;
     setGeneratingPhoto(true);
     try {
       const { imageBase64 } = await generateRecipePhoto({
@@ -284,7 +284,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
       setFlavorTip(null);
       return;
     }
-    if (!requirePremium('Kitchen AI flavor tips are available to Lutopia Premium members.')) return;
+    if (!requirePremium('Kitchen AI flavor tips are available to UlamHub Premium members.')) return;
     setFlavorLoading(true);
     try {
       const flavorSummary = recipe.flavorBalance.map((a) => `${a.label}: ${a.val}/100`).join(', ');
@@ -304,7 +304,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
       setStoryOpen(false);
       return;
     }
-    if (!recipe.story && !requirePremium('Recipe Story is available to Lutopia Premium members.')) return;
+    if (!recipe.story && !requirePremium('Recipe Story is available to UlamHub Premium members.')) return;
     setStoryOpen(true);
     // The story is generated once and saved onto the recipe itself (below) —
     // once recipe.story exists, every later open just displays it instead of

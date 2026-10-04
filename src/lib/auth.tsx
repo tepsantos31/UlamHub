@@ -136,7 +136,7 @@ export async function signInWithGoogle(allowAccountCreation: boolean): Promise<v
     const isNewAccount = createdAt > 0 && Math.abs(lastSignInAt - createdAt) < 5000;
     if (isNewAccount) {
       await supabase.auth.signOut();
-      throw new Error("We couldn't find a Lutopia account for this Google account — tap \"Create account\" to sign up first.");
+      throw new Error("We couldn't find a UlamHub account for this Google account — tap \"Create account\" to sign up first.");
     }
   }
 }

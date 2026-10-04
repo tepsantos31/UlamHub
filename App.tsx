@@ -26,7 +26,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 
 // Handles `ulamhub://recipe/<id>` (a real standalone build) and Expo Go's
 // own dev-time scheme (Linking.createURL abstracts the difference away).
-// Someone sharing a link to Lutopia from another app is handled separately —
+// Someone sharing a link to UlamHub from another app is handled separately —
 // see ShareIntentWatcher below — since expo-share-intent's native "is a share
 // pending" signal (ShareIntentModule.hasShareIntent/onStateChange) is Android
 // only; its own useShareIntentContext() hook is what actually works on both

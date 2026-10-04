@@ -10,7 +10,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Legal'>;
 
 // [Placeholder] — swap in your real legal entity name, jurisdiction, and a
 // monitored contact address before this is submitted to either store.
-const COMPANY = 'Lutopia';
+const COMPANY = 'UlamHub';
 const CONTACT_EMAIL = '[support@yourdomain.com]';
 const LAST_UPDATED = '[Month Year]';
 
@@ -77,7 +77,7 @@ const TERMS: Section[] = [
   },
   {
     heading: 'Subscriptions',
-    body: 'Lutopia Premium is billed through your Apple or Google account on a recurring basis (monthly or annual) until you cancel. It renews automatically at the end of each period unless cancelled at least 24 hours before renewal, in your device\'s subscription settings. Any free trial converts to a paid subscription unless cancelled before it ends.',
+    body: 'UlamHub Premium is billed through your Apple or Google account on a recurring basis (monthly or annual) until you cancel. It renews automatically at the end of each period unless cancelled at least 24 hours before renewal, in your device\'s subscription settings. Any free trial converts to a paid subscription unless cancelled before it ends.',
   },
   {
     heading: 'AI-generated content — please read',

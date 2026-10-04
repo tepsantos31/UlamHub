@@ -150,7 +150,7 @@ export function KitchenScreen({ navigation }: Props) {
   const shareInvite = () => {
     if (!ownedKitchen) return;
     const link = Linking.createURL('kitchen/join', { queryParams: { code: ownedKitchen.inviteCode } });
-    Share.share({ message: `Join my kitchen "${ownedKitchen.name}" on Lutopia! Use code ${ownedKitchen.inviteCode}, or just tap: ${link}` });
+    Share.share({ message: `Join my kitchen "${ownedKitchen.name}" on UlamHub! Use code ${ownedKitchen.inviteCode}, or just tap: ${link}` });
   };
 
   const onLeave = (k: KitchenInfo) => {
@@ -185,7 +185,7 @@ export function KitchenScreen({ navigation }: Props) {
         <PremiumGate
           icon="👨‍🍳"
           title="Kitchen is a Premium feature"
-          body="Joining other kitchens with your crew is available to Lutopia Premium members."
+          body="Joining other kitchens with your crew is available to UlamHub Premium members."
           onGoPremium={() => navigation.navigate('Paywall')}
         />
       ) : (

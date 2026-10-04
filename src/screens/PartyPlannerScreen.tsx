@@ -185,7 +185,7 @@ export function PartyPlannerScreen({ route, navigation }: Props) {
     if (permissionDenied) {
       Alert.alert(
         'Saved — reminder not scheduled',
-        "Your party plan is saved, but notification permission isn't granted, so the reminder won't fire. Enable notifications for Lutopia in your device Settings to turn that on.",
+        "Your party plan is saved, but notification permission isn't granted, so the reminder won't fire. Enable notifications for UlamHub in your device Settings to turn that on.",
       );
     } else {
       Alert.alert('Saved', "Your party plan is saved — it'll be here next time you open Party Planner.");
@@ -226,7 +226,7 @@ export function PartyPlannerScreen({ route, navigation }: Props) {
         <PremiumGate
           icon="🎉"
           title="Party Planner is a Premium tool"
-          body="Building a full spread is a Premium feature — subscribe to Lutopia Premium to unlock it."
+          body="Building a full spread is a Premium feature — subscribe to UlamHub Premium to unlock it."
           onGoPremium={() => navigation.navigate('Paywall')}
         />
       ) : (

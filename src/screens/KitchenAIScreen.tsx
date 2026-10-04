@@ -121,7 +121,7 @@ export function KitchenAIScreen({ route, navigation }: Props) {
           <PremiumGate
             icon="✨"
             title="Kitchen AI is a Premium tool"
-            body="Chatting with your cooking assistant is a Premium feature — subscribe to Lutopia Premium to unlock it."
+            body="Chatting with your cooking assistant is a Premium feature — subscribe to UlamHub Premium to unlock it."
             onGoPremium={() => navigation.navigate('Paywall')}
           />
         </ScrollView>

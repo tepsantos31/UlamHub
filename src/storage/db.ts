@@ -1,9 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// The "uh_" prefix is a leftover from the app's original "UlamHub" name.
-// Changing it would orphan every value already written to a device's
-// AsyncStorage (a fresh key reads back empty), so it stays as internal
-// plumbing even though the app is now "Lutopia".
+// The "uh_" prefix matches the app's "UlamHub" name. Changing it would
+// orphan every value already written to a device's AsyncStorage (a fresh
+// key reads back empty), so leave it as-is even if the name changes again.
 export const KEYS = {
   onboarding: 'uh_onboarding',
   recipes: 'uh_recipes',
