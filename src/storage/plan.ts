@@ -1,11 +1,15 @@
 import { getJSON, setJSON, KEYS } from './db';
-import { PlanDay, MealSlot, Recipe } from '../types/models';
+import { PlanDay, Recipe } from '../types/models';
 import { pushPlan } from '../lib/sync';
 
 const DAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+// A fresh day starts with this many empty placeholder slots; Auto-fill turns
+// all of them into real dishes, and "+ Add a dish" appends more beyond it.
+const DEFAULT_DISH_COUNT = 2;
+
 /** The real Mon–Sun dates for the week containing today — recomputed on
- * every call so the planner never shows a stale calendar. Meals are still
+ * every call so the planner never shows a stale calendar. Dishes are still
  * stored per weekday slot (not per absolute date), so this only fixes what's
  * *displayed*; a filled-in Monday repeats every week until changed. */
 function currentWeekDates(): { day: string; date: string }[] {
@@ -18,16 +22,18 @@ function currentWeekDates(): { day: string; date: string }[] {
   });
 }
 
+function withMinimumDishes(dishes: (string | null)[]): (string | null)[] {
+  if (dishes.length >= DEFAULT_DISH_COUNT) return dishes;
+  return [...dishes, ...Array(DEFAULT_DISH_COUNT - dishes.length).fill(null)];
+}
+
 export async function getPlan(): Promise<PlanDay[]> {
   const stored = await getJSON<PlanDay[]>(KEYS.plan, []);
   const week = currentWeekDates();
   return week.map((w, i) => ({
     day: w.day,
     date: w.date,
-    breakfast: stored[i]?.breakfast ?? null,
-    lunch: stored[i]?.lunch ?? null,
-    merienda: stored[i]?.merienda ?? null,
-    dinner: stored[i]?.dinner ?? null,
+    dishes: withMinimumDishes(stored[i]?.dishes ?? []),
   }));
 }
 
@@ -36,36 +42,45 @@ export async function setPlan(plan: PlanDay[]): Promise<void> {
   pushPlan(plan).catch(() => {});
 }
 
-export async function fillSlot(dayIndex: number, slot: MealSlot, recipeIdOrText: string | null): Promise<PlanDay[]> {
+/** Replaces (or, with `null`, clears) the dish at an existing slot. */
+export async function fillDish(dayIndex: number, dishIndex: number, recipeIdOrText: string | null): Promise<PlanDay[]> {
   const plan = await getPlan();
-  const next = plan.map((d, i) => (i === dayIndex ? { ...d, [slot]: recipeIdOrText } : d));
+  const next = plan.map((d, i) =>
+    i === dayIndex ? { ...d, dishes: d.dishes.map((val, di) => (di === dishIndex ? recipeIdOrText : val)) } : d,
+  );
+  await setPlan(next);
+  return next;
+}
+
+/** Appends a new dish slot to a day, beyond its default two — this is what
+ * the Meal Planner's "+ Add a dish" button calls. */
+export async function addDish(dayIndex: number, recipeId: string): Promise<PlanDay[]> {
+  const plan = await getPlan();
+  const next = plan.map((d, i) => (i === dayIndex ? { ...d, dishes: [...d.dishes, recipeId] } : d));
   await setPlan(next);
   return next;
 }
 
 export async function clearWeek(): Promise<PlanDay[]> {
   const plan = await getPlan();
-  const next = plan.map((d) => ({ ...d, breakfast: null, lunch: null, merienda: null, dinner: null }));
+  const next = plan.map((d) => ({ ...d, dishes: Array(DEFAULT_DISH_COUNT).fill(null) }));
   await setPlan(next);
   return next;
 }
 
-/** Fills empty slots with real recipe ids cycled from the given library —
- * previously this used hardcoded dish-name strings that matched no actual
- * recipe, which silently broke anything keyed off a real Recipe object for
- * an auto-filled day (grocery-list ingredients, budget totals, etc). */
+/** Fills every empty placeholder slot with a real recipe id cycled from the
+ * given library — previously this used hardcoded dish-name strings that
+ * matched no actual recipe, which silently broke anything keyed off a real
+ * Recipe object for an auto-filled day (grocery-list ingredients, budget
+ * totals, etc). A fresh day has DEFAULT_DISH_COUNT empty slots, so this is
+ * what gives it that many real dishes; any extra slots added with
+ * "+ Add a dish" get filled too if left empty. */
 export async function autoFillWeek(recipes: Recipe[]): Promise<PlanDay[]> {
   const plan = await getPlan();
   if (recipes.length === 0) return plan;
   let idx = 0;
   const pick = () => recipes[idx++ % recipes.length].id;
-  const next = plan.map((d) => ({
-    ...d,
-    breakfast: d.breakfast || pick(),
-    lunch: d.lunch || pick(),
-    merienda: d.merienda || pick(),
-    dinner: d.dinner || pick(),
-  }));
+  const next = plan.map((d) => ({ ...d, dishes: d.dishes.map((val) => val || pick()) }));
   await setPlan(next);
   return next;
 }

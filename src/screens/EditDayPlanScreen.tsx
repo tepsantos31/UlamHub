@@ -6,24 +6,21 @@ import { RootStackParamList } from '../navigation/types';
 import { colors, fonts, radii, shadow } from '../theme/theme';
 import { Screen } from '../components/Screen';
 import { HeaderBar } from '../components/HeaderBar';
-import { PlanDay, Recipe, MealSlot } from '../types/models';
-import { getPlan, fillSlot } from '../storage/plan';
+import { PlanDay, Recipe } from '../types/models';
+import { getPlan, fillDish, addDish } from '../storage/plan';
 import { listRecipes } from '../storage/recipes';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EditDayPlan'>;
-
-const SLOTS: { key: MealSlot; label: string }[] = [
-  { key: 'breakfast', label: 'BREAKFAST' },
-  { key: 'lunch', label: 'LUNCH' },
-  { key: 'merienda', label: 'SNACK' },
-  { key: 'dinner', label: 'DINNER' },
-];
 
 export function EditDayPlanScreen({ route, navigation }: Props) {
   const { dayIndex } = route.params;
   const [day, setDay] = useState<PlanDay | null>(null);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [activeSlot, setActiveSlot] = useState<MealSlot | null>(null);
+  // The picker modal is shared between replacing an existing dish
+  // (editingIndex points at it) and appending a new one (addingNew) — only
+  // one of the two is ever active at a time.
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [addingNew, setAddingNew] = useState(false);
 
   const reload = useCallback(async () => {
     const [plan, r] = await Promise.all([getPlan(), listRecipes()]);
@@ -40,48 +37,56 @@ export function EditDayPlanScreen({ route, navigation }: Props) {
   const byId = new Map(recipes.map((r) => [r.id, r]));
   const labelFor = (val: string | null) => (val ? byId.get(val)?.name ?? val : 'Not set');
 
+  const pickerOpen = editingIndex !== null || addingNew;
+
+  const closePicker = () => {
+    setEditingIndex(null);
+    setAddingNew(false);
+  };
+
   const pickRecipe = async (recipeId: string) => {
-    if (!activeSlot) return;
-    const next = await fillSlot(dayIndex, activeSlot, recipeId);
-    setDay(next[dayIndex] ?? null);
-    setActiveSlot(null);
+    const next = addingNew ? await addDish(dayIndex, recipeId) : editingIndex !== null ? await fillDish(dayIndex, editingIndex, recipeId) : null;
+    if (next) setDay(next[dayIndex] ?? null);
+    closePicker();
   };
 
-  const clearSlot = async () => {
-    if (!activeSlot) return;
-    const next = await fillSlot(dayIndex, activeSlot, null);
+  const clearDish = async () => {
+    if (editingIndex === null) return;
+    const next = await fillDish(dayIndex, editingIndex, null);
     setDay(next[dayIndex] ?? null);
-    setActiveSlot(null);
+    closePicker();
   };
 
-  const currentSlotValue = activeSlot && day ? day[activeSlot] : null;
+  const currentValue = editingIndex !== null && day ? day.dishes[editingIndex] : null;
 
   if (!day) return null;
 
   return (
     <Screen withTabBarSpace={false} scroll={false}>
       <HeaderBar title={`Edit ${day.day}`} onBack={() => navigation.goBack()} />
-      <Text style={styles.subtitle}>Select or replace the dish for each meal.</Text>
+      <Text style={styles.subtitle}>Select or replace a dish, or add another one for the day.</Text>
 
       <View style={{ gap: 10, marginTop: 16 }}>
-        {SLOTS.map(({ key, label }) => (
-          <Pressable key={key} onPress={() => setActiveSlot(key)} style={[styles.slotRow, shadow.soft]}>
+        {day.dishes.map((val, idx) => (
+          <Pressable key={idx} onPress={() => setEditingIndex(idx)} style={[styles.slotRow, shadow.soft]}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.slotLabel}>{label}</Text>
-              <Text style={styles.slotValue}>{labelFor(day[key])}</Text>
+              <Text style={styles.slotValue}>{labelFor(val)}</Text>
             </View>
             <Text style={styles.chevron}>›</Text>
           </Pressable>
         ))}
+        <Pressable onPress={() => setAddingNew(true)} style={styles.addDishBtn}>
+          <Text style={styles.addDishText}>＋ Add a dish</Text>
+        </Pressable>
       </View>
 
-      <Modal visible={!!activeSlot} animationType="slide" transparent onRequestClose={() => setActiveSlot(null)}>
-        <Pressable style={styles.modalScrim} onPress={() => setActiveSlot(null)} />
+      <Modal visible={pickerOpen} animationType="slide" transparent onRequestClose={closePicker}>
+        <Pressable style={styles.modalScrim} onPress={closePicker} />
         <View style={styles.modalSheet}>
           <Text style={styles.modalTitle}>Choose a recipe</Text>
-          {currentSlotValue && (
-            <Pressable onPress={clearSlot} style={styles.clearRow}>
-              <Text style={styles.clearRowText}>✕ Clear this meal</Text>
+          {editingIndex !== null && currentValue && (
+            <Pressable onPress={clearDish} style={styles.clearRow}>
+              <Text style={styles.clearRowText}>✕ Clear this dish</Text>
             </Pressable>
           )}
           <FlatList
@@ -90,8 +95,8 @@ export function EditDayPlanScreen({ route, navigation }: Props) {
             style={{ maxHeight: 420 }}
             renderItem={({ item }) => (
               <Pressable onPress={() => pickRecipe(item.id)} style={styles.modalRow}>
-                <Text style={[styles.modalRowName, item.id === currentSlotValue && styles.modalRowNameActive]}>{item.name}</Text>
-                <Text style={styles.modalRowMeta}>{item.id === currentSlotValue ? '✓ Selected' : item.country}</Text>
+                <Text style={[styles.modalRowName, item.id === currentValue && styles.modalRowNameActive]}>{item.name}</Text>
+                <Text style={styles.modalRowMeta}>{item.id === currentValue ? '✓ Selected' : item.country}</Text>
               </Pressable>
             )}
           />
@@ -104,9 +109,17 @@ export function EditDayPlanScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   subtitle: { fontSize: 13.5, color: colors.sageMuted, marginTop: 8, lineHeight: 20 },
   slotRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderRadius: radii.lg, padding: 16 },
-  slotLabel: { fontSize: 10.5, fontFamily: fonts.bodyExtraBold, color: colors.tealDark, letterSpacing: 0.3 },
-  slotValue: { fontSize: 15, fontFamily: fonts.bodySemiBold, color: colors.ink, marginTop: 4 },
+  slotValue: { fontSize: 15, fontFamily: fonts.bodySemiBold, color: colors.ink },
   chevron: { fontSize: 22, color: colors.tertiaryText, fontFamily: fonts.bodyBold },
+  addDishBtn: {
+    alignItems: 'center',
+    paddingVertical: 15,
+    borderRadius: radii.lg,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: colors.borderMuted,
+  },
+  addDishText: { fontSize: 14, fontFamily: fonts.bodyBold, color: colors.tealLink },
   modalScrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
   modalSheet: { backgroundColor: colors.screenBg, borderTopLeftRadius: radii.xxl, borderTopRightRadius: radii.xxl, padding: 20, paddingBottom: 34 },
   modalTitle: { fontFamily: fonts.heading, fontSize: 20, color: colors.ink, marginBottom: 12 },

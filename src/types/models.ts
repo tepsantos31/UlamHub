@@ -33,7 +33,6 @@ export type Skill = 'beginner' | 'home' | 'pro';
 export type Diet = 'Vegetarian' | 'Halal' | 'Low-sodium' | 'Diabetic-friendly';
 export type Budget = '$' | '$$' | '$$$';
 export type Difficulty = 'Beginner' | 'Home cook' | 'Experienced';
-export type MealSlot = 'breakfast' | 'lunch' | 'merienda' | 'dinner';
 
 export interface Ingredient {
   name: string;
@@ -108,10 +107,11 @@ export interface Recipe {
 export interface PlanDay {
   day: string; // Mon, Tue...
   date: string; // day-of-month
-  breakfast: string | null; // recipe id or free text
-  lunch: string | null;
-  merienda: string | null;
-  dinner: string | null;
+  // Recipe ids, in display order — not tied to a meal type (breakfast/lunch/
+  // etc). `null` is an empty placeholder slot; every day has at least
+  // DEFAULT_DISH_COUNT (see storage/plan.ts) of these by default, and
+  // "+ Add a dish" appends more.
+  dishes: (string | null)[];
 }
 
 export interface GroceryItem {

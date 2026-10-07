@@ -9,10 +9,9 @@ import { Screen } from '../components/Screen';
 import { SectionHeader } from '../components/SectionHeader';
 import { RecipeCard, TrendingCard } from '../components/RecipeCard';
 import { SearchIcon, BellIcon } from '../components/Icon';
-import { Recipe, PlanDay, SettingsState } from '../types/models';
+import { Recipe, SettingsState } from '../types/models';
 import { listRecipes } from '../storage/recipes';
 import { getProfile, getSettings } from '../storage/settings';
-import { getPlan } from '../storage/plan';
 import { canAccessRecipe, isSubscriptionActive } from '../utils/subscription';
 import { fetchTrendingRecipes, TrendingRecipe } from '../lib/sync';
 import { MainTabParamList, RootStackParamList } from '../navigation/types';
@@ -21,8 +20,6 @@ type Nav = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList, 'Home'>,
   NativeStackNavigationProp<RootStackParamList>
 >;
-
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const AI_TOOLS: { label: string; desc: string; icon: string; tint: string; route: 'LeftoverAlchemist' | 'IngredientScanner' | 'PartyPlanner' }[] = [
   { label: 'Leftover Alchemist', desc: 'Turn what you have into something new', icon: '🧪', tint: colors.coralBg, route: 'LeftoverAlchemist' },
@@ -34,7 +31,6 @@ export function HomeScreen() {
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [plan, setPlan] = useState<PlanDay[]>([]);
   const [name, setName] = useState('there');
   const [avatarInitial, setAvatarInitial] = useState('U');
   const [settings, setSettingsState] = useState<SettingsState | null>(null);
@@ -44,15 +40,9 @@ export function HomeScreen() {
     useCallback(() => {
       let mounted = true;
       (async () => {
-        const [allRecipes, profile, weekPlan, currentSettings] = await Promise.all([
-          listRecipes(),
-          getProfile(),
-          getPlan(),
-          getSettings(),
-        ]);
+        const [allRecipes, profile, currentSettings] = await Promise.all([listRecipes(), getProfile(), getSettings()]);
         if (!mounted) return;
         setRecipes(allRecipes);
-        setPlan(weekPlan);
         setName(profile.name.split(' ')[0]);
         setAvatarInitial(profile.avatarInitial);
         setSettingsState(currentSettings);
@@ -69,8 +59,6 @@ export function HomeScreen() {
   );
 
   const byId = new Map(recipes.map((r) => [r.id, r]));
-  const todayName = WEEKDAYS[new Date().getDay()];
-  const todayPlan = plan.find((d) => d.day === todayName) ?? plan[0];
   const myRecipes = recipes.filter((r) => r.userAdded);
 
   const trendingCards = trending.map((t) => {
@@ -105,11 +93,6 @@ export function HomeScreen() {
       : () => navigation.navigate('SharedRecipe', { rowId: t.rowId });
     return { key: t.rowId, recipe: display, shareCount: t.shareCount, onPress };
   });
-
-  const todayLabel = (val: string | null) => {
-    if (!val) return '—';
-    return byId.get(val)?.name ?? val;
-  };
 
   return (
     <Screen>
@@ -187,34 +170,6 @@ export function HomeScreen() {
           </Pressable>
         ))}
       </ScrollView>
-
-      <Pressable onPress={() => navigation.navigate('Planner')} style={styles.planCard}>
-        <View style={styles.planGlow} />
-        <View style={styles.planTopRow}>
-          <Text style={styles.planTitle}>Today's Plan</Text>
-          <Text style={styles.planSeeWeek}>See week →</Text>
-        </View>
-        <View style={styles.planSlots}>
-          {(['breakfast', 'lunch', 'merienda', 'dinner'] as const).map((slot) => (
-            <View key={slot} style={styles.planSlot}>
-              <Text style={styles.planSlotLabel}>{slot === 'merienda' ? 'Snack' : slot}</Text>
-              <Text style={styles.planSlotValue} numberOfLines={2}>
-                {todayPlan ? todayLabel(todayPlan[slot]) : '—'}
-              </Text>
-            </View>
-          ))}
-        </View>
-      </Pressable>
-
-      <Pressable onPress={() => navigation.navigate('PartyPlanner')} style={styles.occasionBanner}>
-        <View style={styles.occasionIcon}>
-          <Text style={{ fontSize: 22 }}>🎉</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.occasionTitle}>Party Food Planner</Text>
-          <Text style={styles.occasionBody}>Build a full party spread in one tap</Text>
-        </View>
-      </Pressable>
 
       <Pressable onPress={() => navigation.navigate('Kitchen')} style={[styles.kitchenBanner, shadow.card]}>
         <View style={styles.kitchenIcon}>
@@ -322,16 +277,16 @@ const styles = StyleSheet.create({
   hScroll: { gap: 14, paddingBottom: 4 },
   kitchenBanner: {
     marginTop: 22,
-    backgroundColor: colors.white,
+    backgroundColor: colors.gold,
     borderRadius: radii.xl,
     padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  kitchenIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: colors.mint, alignItems: 'center', justifyContent: 'center' },
-  kitchenTitle: { fontFamily: fonts.bodyBold, fontSize: 14.5, color: colors.ink },
-  kitchenBody: { fontSize: 11.5, color: colors.secondaryText, marginTop: 2, fontFamily: fonts.bodySemiBold },
+  kitchenIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: colors.goldChip, alignItems: 'center', justifyContent: 'center' },
+  kitchenTitle: { fontFamily: fonts.bodyBold, fontSize: 14.5, color: colors.goldTextDeep },
+  kitchenBody: { fontSize: 11.5, color: colors.goldTextMid, marginTop: 2, fontFamily: fonts.bodySemiBold },
   kitchenArrow: { fontSize: 16, color: colors.tealLink, fontFamily: fonts.bodyBold },
   emptyMyRecipes: {
     backgroundColor: colors.white,
@@ -357,40 +312,4 @@ const styles = StyleSheet.create({
   },
   toolLabel: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.ink, lineHeight: 17 },
   toolDesc: { fontSize: 11, color: colors.secondaryText, marginTop: 4, lineHeight: 15 },
-  planCard: {
-    marginTop: 22,
-    backgroundColor: colors.deepGreen,
-    borderRadius: radii.xl,
-    padding: 18,
-    paddingBottom: 16,
-    overflow: 'hidden',
-  },
-  planGlow: {
-    position: 'absolute',
-    right: -30,
-    top: -30,
-    width: 130,
-    height: 130,
-    borderRadius: 65,
-    backgroundColor: 'rgba(67,193,180,0.14)',
-  },
-  planTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  planTitle: { fontFamily: fonts.heading, fontSize: 17, color: colors.mint },
-  planSeeWeek: { fontSize: 12, color: colors.teal, fontFamily: fonts.bodyBold },
-  planSlots: { flexDirection: 'row', gap: 8, marginTop: 14 },
-  planSlot: { flex: 1, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 13, padding: 9 },
-  planSlotLabel: { fontSize: 10, fontFamily: fonts.bodyBold, color: colors.tealDark, textTransform: 'uppercase' },
-  planSlotValue: { fontSize: 12, color: '#DCEEEA', fontFamily: fonts.bodySemiBold, marginTop: 5, lineHeight: 15 },
-  occasionBanner: {
-    marginTop: 22,
-    borderRadius: radii.xl,
-    padding: 16,
-    backgroundColor: colors.gold,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  occasionIcon: { width: 48, height: 48, borderRadius: 14, backgroundColor: colors.goldChip, alignItems: 'center', justifyContent: 'center' },
-  occasionTitle: { fontFamily: fonts.heading, fontSize: 16, color: colors.goldTextDeep, marginTop: 2 },
-  occasionBody: { fontSize: 12, color: colors.goldTextMid, marginTop: 1 },
 });

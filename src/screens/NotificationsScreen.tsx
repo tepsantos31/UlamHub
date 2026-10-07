@@ -14,7 +14,6 @@ import { getIncomingRequests, getIncomingKitchenJoinRequests } from '../lib/kitc
 type Props = NativeStackScreenProps<RootStackParamList, 'Notifications'>;
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const SLOT_LABEL: Record<string, string> = { breakfast: 'breakfast', lunch: 'lunch', merienda: 'snack', dinner: 'dinner' };
 
 interface Group {
   title: string;
@@ -40,11 +39,10 @@ export function NotificationsScreen({ navigation }: Props) {
 
         const mealItems: Group['items'] = [];
         if (today) {
-          for (const slot of ['breakfast', 'lunch', 'merienda', 'dinner'] as const) {
-            const val = today[slot];
+          for (const val of today.dishes) {
             if (!val) continue;
             const name = byId.get(val)?.name ?? val;
-            mealItems.push({ t: `Time to prep ${SLOT_LABEL[slot]} — ${name}`, s: 'Today', dot: colors.amber });
+            mealItems.push({ t: `Time to prep — ${name}`, s: 'Today', dot: colors.amber });
           }
         }
 

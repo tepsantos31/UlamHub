@@ -8,7 +8,6 @@ export const KEYS = {
   recipes: 'uh_recipes',
   plan: 'uh_plan',
   grocery: 'uh_grocery',
-  groceryDismissed: 'uh_grocery_dismissed',
   settings: 'uh_settings',
   profile: 'uh_profile',
   chat: 'uh_chat',

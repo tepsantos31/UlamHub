@@ -4,24 +4,19 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, fonts, radii, shadow } from '../theme/theme';
 import { Screen } from '../components/Screen';
-import { PlanDay, Recipe, MealSlot } from '../types/models';
+import { PlanDay, Recipe } from '../types/models';
 import { getPlan, autoFillWeek, clearWeek } from '../storage/plan';
 import { listRecipes } from '../storage/recipes';
+import { addRecipesToGrocery } from '../storage/grocery';
 import { RootStackParamList } from '../navigation/types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
-
-const SLOTS: { key: MealSlot; label: string }[] = [
-  { key: 'breakfast', label: 'BREAKFAST' },
-  { key: 'lunch', label: 'LUNCH' },
-  { key: 'merienda', label: 'SNACK' },
-  { key: 'dinner', label: 'DINNER' },
-];
 
 export function MealPlannerScreen() {
   const navigation = useNavigation<Nav>();
   const [plan, setPlan] = useState<PlanDay[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [addedDay, setAddedDay] = useState<number | null>(null);
 
   const reload = useCallback(async () => {
     const [p, r] = await Promise.all([getPlan(), listRecipes()]);
@@ -36,7 +31,6 @@ export function MealPlannerScreen() {
   );
 
   const byId = new Map(recipes.map((r) => [r.id, r]));
-  const labelFor = (val: string | null) => (val ? byId.get(val)?.name ?? val : '+');
 
   const onAutoFill = async () => {
     if (recipes.length === 0) {
@@ -48,7 +42,7 @@ export function MealPlannerScreen() {
   };
 
   const onClearWeek = () => {
-    Alert.alert('Clear this week', 'This empties every meal slot for the week.', [
+    Alert.alert('Clear this week', 'This empties every dish for the week.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Clear',
@@ -65,12 +59,25 @@ export function MealPlannerScreen() {
   // it goes straight to that recipe; an empty slot has nothing to show, so
   // tapping it goes to the same place "Edit day" does — there's no separate
   // per-slot picker on this screen any more (see EditDayPlanScreen).
-  const onSlotPress = (dayIndex: number, recipeId: string | null) => {
+  const onDishPress = (dayIndex: number, recipeId: string | null) => {
     if (recipeId) {
       navigation.navigate('RecipeDetail', { recipeId });
     } else {
       navigation.navigate('EditDayPlan', { dayIndex });
     }
+  };
+
+  // Meal planning no longer syncs to the grocery list on its own — this is
+  // the only way a day's ingredients end up there.
+  const onAddToGrocery = async (day: PlanDay, dayIndex: number) => {
+    const dayRecipes = day.dishes.map((id) => (id ? byId.get(id) : null)).filter((r): r is Recipe => !!r);
+    if (dayRecipes.length === 0) {
+      Alert.alert('Nothing to add', 'Add a dish to this day first.');
+      return;
+    }
+    await addRecipesToGrocery(dayRecipes);
+    setAddedDay(dayIndex);
+    setTimeout(() => setAddedDay((d) => (d === dayIndex ? null : d)), 1800);
   };
 
   return (
@@ -97,19 +104,24 @@ export function MealPlannerScreen() {
                 <Text style={styles.dateChipNum}>{day.date}</Text>
               </View>
               <View style={styles.slotGrid}>
-                {SLOTS.map(({ key, label }) => (
-                  <Pressable key={key} onPress={() => onSlotPress(di, day[key])} style={styles.slotCell}>
-                    <Text style={styles.slotLabel}>{label}</Text>
-                    <Text style={styles.slotValue} numberOfLines={1}>
-                      {labelFor(day[key])}
+                {day.dishes.map((recipeId, slotIdx) => (
+                  <Pressable key={slotIdx} onPress={() => onDishPress(di, recipeId)} style={styles.slotCell}>
+                    <Text style={[styles.slotValue, !recipeId && styles.slotValueEmpty]} numberOfLines={2}>
+                      {recipeId ? byId.get(recipeId)?.name ?? recipeId : '+ Add a dish'}
                     </Text>
                   </Pressable>
                 ))}
               </View>
             </View>
-            <Pressable onPress={() => navigation.navigate('EditDayPlan', { dayIndex: di })} style={styles.editDayBtn}>
-              <Text style={styles.editDayText}>✎ Edit day</Text>
-            </Pressable>
+            <View style={styles.dayActions}>
+              <Pressable onPress={() => navigation.navigate('EditDayPlan', { dayIndex: di })} style={styles.dayActionBtn}>
+                <Text style={styles.editDayText}>✎ Edit day</Text>
+              </Pressable>
+              <View style={styles.dayActionDivider} />
+              <Pressable onPress={() => onAddToGrocery(day, di)} style={styles.dayActionBtn}>
+                <Text style={styles.addGroceryText}>{addedDay === di ? '✓ Added' : '🧺 Add to grocery list'}</Text>
+              </Pressable>
+            </View>
           </View>
         ))}
       </View>
@@ -131,9 +143,12 @@ const styles = StyleSheet.create({
   dateChipDay: { fontSize: 9, fontFamily: fonts.bodyExtraBold, color: colors.tealLink },
   dateChipNum: { fontFamily: fonts.heading, fontSize: 15, color: colors.deepGreen },
   slotGrid: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  slotCell: { width: '48.5%', borderRadius: 9, padding: 8, backgroundColor: '#F6F4EE', borderWidth: 1, borderColor: colors.divider },
-  slotLabel: { fontSize: 8.5, fontFamily: fonts.bodyExtraBold, color: colors.tealDark, letterSpacing: 0.3 },
-  slotValue: { fontSize: 11, fontFamily: fonts.bodySemiBold, color: '#2C4642', marginTop: 2 },
-  editDayBtn: { marginTop: 10, alignItems: 'center', paddingVertical: 8, borderTopWidth: 1, borderTopColor: colors.divider },
+  slotCell: { width: '48.5%', borderRadius: 9, padding: 8, backgroundColor: '#F6F4EE', borderWidth: 1, borderColor: colors.divider, justifyContent: 'center', minHeight: 40 },
+  slotValue: { fontSize: 12.5, fontFamily: fonts.bodySemiBold, color: '#2C4642' },
+  slotValueEmpty: { color: colors.tertiaryText, fontFamily: fonts.bodyBold },
+  dayActions: { flexDirection: 'row', alignItems: 'stretch', marginTop: 10, borderTopWidth: 1, borderTopColor: colors.divider },
+  dayActionDivider: { width: 1, backgroundColor: colors.divider },
+  dayActionBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10 },
   editDayText: { fontSize: 12, fontFamily: fonts.bodyBold, color: colors.tealLink },
+  addGroceryText: { fontSize: 12, fontFamily: fonts.bodyBold, color: colors.tealLink },
 });

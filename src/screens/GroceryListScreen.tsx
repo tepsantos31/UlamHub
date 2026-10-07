@@ -8,9 +8,7 @@ import { ToggleSwitch } from '../components/ToggleSwitch';
 import { PillButton } from '../components/PillButton';
 import { ShareIcon } from '../components/Icon';
 import { GroceryGroup, SettingsState } from '../types/models';
-import { getGrocery, toggleGroceryItem, addManualItem, regenerateFromPlan, clearGrocery } from '../storage/grocery';
-import { getPlan } from '../storage/plan';
-import { listRecipes } from '../storage/recipes';
+import { getGrocery, toggleGroceryItem, addManualItem, clearGrocery } from '../storage/grocery';
 import { getOnboarding, setOnboarding } from '../storage/onboarding';
 import { getSettings } from '../storage/settings';
 import { ABROAD_SUBSTITUTIONS } from '../storage/seed';
@@ -43,15 +41,16 @@ export function GroceryListScreen() {
   useFocusEffect(
     useCallback(() => {
       (async () => {
-        const [plan, recipes, onboarding, s] = await Promise.all([getPlan(), listRecipes(), getOnboarding(), getSettings()]);
-        const g = await regenerateFromPlan(plan, recipes);
+        const [g, onboarding, s] = await Promise.all([getGrocery(), getOnboarding(), getSettings()]);
         setGroups(g);
         setDiaspora(onboarding.quiz.diaspora);
         setHomeCuisine(onboarding.quiz.countries[0] ?? '');
         setSettingsState(s);
-        // regenerateFromPlan can reshuffle which item sits at which index —
-        // any open substitute panel would otherwise end up labeled for the
-        // wrong ingredient.
+        // The list can change from elsewhere (Recipe Detail's "Add to
+        // grocery", Meal Planner's per-day button) while this screen isn't
+        // focused — an open substitute panel would otherwise end up labeled
+        // for whatever item now sits at that index instead of the one it
+        // was opened for.
         setSubstitutes({});
       })();
     }, []),
@@ -126,14 +125,13 @@ export function GroceryListScreen() {
 
   const onClear = () => {
     if (total === 0) return;
-    Alert.alert('Clear grocery list', "This removes every item currently on your list. It only comes back if you change this week's meal plan.", [
+    Alert.alert('Clear grocery list', 'This removes every item currently on your list.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Clear list',
         style: 'destructive',
         onPress: async () => {
-          const plan = await getPlan();
-          const next = await clearGrocery(plan);
+          const next = await clearGrocery();
           setGroups(next);
         },
       },
@@ -158,7 +156,7 @@ export function GroceryListScreen() {
         </Pressable>
       </View>
       <Text style={styles.subline}>
-        {done} of {total} items · from this week's plan
+        {done} of {total} items
       </Text>
 
       <View style={styles.diasporaRow}>
@@ -198,7 +196,7 @@ export function GroceryListScreen() {
                 const key = `${gi}-${ii}`;
                 const sub = substitutes[key];
                 return (
-                  <View key={it.n} style={ii !== g.items.length - 1 && styles.rowBorder}>
+                  <View key={key} style={ii !== g.items.length - 1 && styles.rowBorder}>
                     <View style={styles.itemRow}>
                       <Pressable onPress={() => onToggle(gi, ii)} style={styles.itemMain}>
                         <View style={[styles.checkbox, it.checked && { backgroundColor: colors.teal, borderColor: colors.teal }]}>
