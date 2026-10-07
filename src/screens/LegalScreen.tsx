@@ -8,11 +8,9 @@ import { HeaderBar } from '../components/HeaderBar';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Legal'>;
 
-// [Placeholder] — swap in your real legal entity name, jurisdiction, and a
-// monitored contact address before this is submitted to either store.
 const COMPANY = 'UlamHub';
-const CONTACT_EMAIL = '[support@yourdomain.com]';
-const LAST_UPDATED = '[Month Year]';
+const CONTACT_EMAIL = 'support@ulamhub.com';
+const LAST_UPDATED = 'October 2026';
 
 interface Section {
   heading: string;
