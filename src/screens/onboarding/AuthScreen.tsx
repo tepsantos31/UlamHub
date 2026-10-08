@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, Image, TextInput, Pressable, Alert, StyleSheet } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { RootStackParamList } from '../../navigation/types';
 import { colors, fonts } from '../../theme/theme';
 import { PillButton } from '../../components/PillButton';
 import { Screen } from '../../components/Screen';
 import { EyeIcon, EyeOffIcon, GoogleIcon } from '../../components/Icon';
 import { supabaseConfigured } from '../../lib/supabase';
-import { signInWithPassword, signUpWithPassword, signInWithMagicLink, signInWithGoogle } from '../../lib/auth';
+import { signInWithPassword, signUpWithPassword, signInWithMagicLink, signInWithGoogle, signInWithApple } from '../../lib/auth';
 import { runInitialSync } from '../../lib/initialSync';
 import { getOnboarding } from '../../storage/onboarding';
 
@@ -20,7 +21,14 @@ export function AuthScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState<'password' | 'magic' | 'google' | null>(null);
+  const [loading, setLoading] = useState<'password' | 'magic' | 'google' | 'apple' | null>(null);
+  // expo-apple-authentication resolves this false on Android and on iOS
+  // devices without an Apple ID signed in — never assume it's available.
+  const [appleAvailable, setAppleAvailable] = useState(false);
+
+  useEffect(() => {
+    AppleAuthentication.isAvailableAsync().then(setAppleAvailable);
+  }, []);
 
   // If Supabase isn't configured yet, fall back to the old "just move on"
   // behavior rather than blocking onboarding on a setup step the user hasn't
@@ -90,6 +98,18 @@ export function AuthScreen({ navigation }: Props) {
       await afterSignedIn();
     } catch (e: any) {
       Alert.alert('Google sign-in failed', e?.message ?? 'Something went wrong.');
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const submitApple = async () => {
+    setLoading('apple');
+    try {
+      await signInWithApple(mode === 'signup');
+      await afterSignedIn();
+    } catch (e: any) {
+      Alert.alert('Apple sign-in failed', e?.message ?? 'Something went wrong.');
     } finally {
       setLoading(null);
     }
@@ -171,6 +191,15 @@ export function AuthScreen({ navigation }: Props) {
               <Text style={styles.dividerText}>or</Text>
               <View style={styles.dividerLine} />
             </View>
+            {appleAvailable && (
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={mode === 'signup' ? AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP : AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                cornerRadius={14}
+                style={[styles.appleBtn, loading !== null && { opacity: 0.6 }]}
+                onPress={loading !== null ? () => {} : submitApple}
+              />
+            )}
             <Pressable
               onPress={submitGoogle}
               disabled={loading !== null}
@@ -250,6 +279,7 @@ const styles = StyleSheet.create({
   dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 },
   dividerLine: { flex: 1, height: 1, backgroundColor: colors.divider },
   dividerText: { fontSize: 12.5, color: colors.tertiaryText, fontFamily: fonts.bodySemiBold },
+  appleBtn: { height: 52, width: '100%' },
   googleBtn: {
     height: 52,
     borderRadius: 14,

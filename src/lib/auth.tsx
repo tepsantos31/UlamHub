@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Crypto from 'expo-crypto';
 import { Session } from '@supabase/supabase-js';
 import { supabase, supabaseConfigured } from './supabase';
 import { runInitialSync } from './initialSync';
@@ -137,6 +139,60 @@ export async function signInWithGoogle(allowAccountCreation: boolean): Promise<v
     if (isNewAccount) {
       await supabase.auth.signOut();
       throw new Error("We couldn't find a UlamHub account for this Google account — tap \"Create account\" to sign up first.");
+    }
+  }
+}
+
+// Unlike Google (web OAuth redirect), Apple's own Sign In sheet hands back a
+// native identity token directly — no browser round-trip needed. Supabase
+// verifies that token itself via signInWithIdToken, but only if the nonce it
+// was issued with matches: Apple only ever sees the SHA-256 hash (it signs
+// that into the token), so Supabase has to be given the original raw value
+// to hash and compare against.
+async function signInWithAppleIdentityToken(identityToken: string, rawNonce: string): Promise<Session | null> {
+  const { data, error } = await supabase.auth.signInWithIdToken({
+    provider: 'apple',
+    token: identityToken,
+    nonce: rawNonce,
+  });
+  if (error) throw error;
+  return data.session;
+}
+
+// Apple's dialog doesn't distinguish "sign in" from "sign up" the way the
+// email/password form does — a first-time Apple ID just creates an account.
+// Mirrors signInWithGoogle's allowAccountCreation guard so "Continue with
+// Apple" on the sign-in tab can't silently create a brand-new account.
+export async function signInWithApple(allowAccountCreation: boolean): Promise<void> {
+  const rawNonce = Crypto.randomUUID();
+  const hashedNonce = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawNonce);
+
+  let credential: AppleAuthentication.AppleAuthenticationCredential;
+  try {
+    credential = await AppleAuthentication.signInAsync({
+      requestedScopes: [AppleAuthentication.AppleAuthenticationScope.FULL_NAME, AppleAuthentication.AppleAuthenticationScope.EMAIL],
+      nonce: hashedNonce,
+    });
+  } catch (e: any) {
+    if (e?.code === 'ERR_REQUEST_CANCELED') return; // user cancelled — not an error
+    throw e;
+  }
+
+  if (!credential.identityToken) {
+    throw new Error('Apple sign-in did not return an identity token.');
+  }
+  const session = await signInWithAppleIdentityToken(credential.identityToken, rawNonce);
+
+  if (!allowAccountCreation) {
+    const user = session?.user;
+    // Same heuristic as signInWithGoogle — Supabase doesn't expose an
+    // explicit "was this just created" flag for an identity-token sign-in.
+    const createdAt = user?.created_at ? new Date(user.created_at).getTime() : 0;
+    const lastSignInAt = user?.last_sign_in_at ? new Date(user.last_sign_in_at).getTime() : 0;
+    const isNewAccount = createdAt > 0 && Math.abs(lastSignInAt - createdAt) < 5000;
+    if (isNewAccount) {
+      await supabase.auth.signOut();
+      throw new Error('We couldn\'t find a UlamHub account for this Apple ID — tap "Create account" to sign up first.');
     }
   }
 }
