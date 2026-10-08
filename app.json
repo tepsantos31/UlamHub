@@ -59,7 +59,8 @@
           "icon": "./assets/icon.png",
           "color": "#295B53"
         }
-      ]
+      ],
+      "./plugins/withMinIosDeploymentTarget"
     ],
     "extra": {
       "eas": {
