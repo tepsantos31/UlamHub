@@ -3,10 +3,10 @@ import { View, Text, TextInput, Pressable, Image, ScrollView, ActivityIndicator,
 import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { colors, fonts, radii, shadow } from '../theme/theme';
-import { Screen } from '../components/Screen';
 import { HeaderBar } from '../components/HeaderBar';
 import { PillButton } from '../components/PillButton';
 import { PremiumGate } from '../components/PremiumGate';
@@ -31,6 +31,7 @@ const MAX_REGENERATIONS = 5;
 
 export function WhatCanIMakeScreen({ navigation }: Props) {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const [photos, setPhotos] = useState<StagedPhoto[]>([]);
   const [text, setText] = useState('');
   const [cuisine, setCuisine] = useState<string | null>(null);
@@ -113,8 +114,23 @@ export function WhatCanIMakeScreen({ navigation }: Props) {
   const needIngredients = current?.ingredients.filter((i) => !i.have) ?? [];
 
   return (
-    <Screen withTabBarSpace={false}>
-      <HeaderBar onBack={inResults ? startOver : () => navigation.goBack()} />
+    <View style={{ flex: 1, backgroundColor: colors.screenBg, paddingTop: insets.top + 10 }}>
+      <View style={{ paddingHorizontal: 20 }}>
+        <HeaderBar onBack={inResults ? startOver : () => navigation.goBack()} />
+      </View>
+      {/* No KeyboardAvoidingView here on purpose — combining one with
+          automaticallyAdjustKeyboardInsets below double-compensates for the
+          keyboard and scrolls the focused field clean off-screen instead of
+          just above it. automaticallyAdjustKeyboardInsets (iOS) alone is
+          enough to bring a focused TextInput into view as it's well down
+          this form. */}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 + insets.bottom }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
+      >
       <View style={styles.badge}>
         <Text style={{ fontSize: 22 }}>💡</Text>
       </View>
@@ -246,7 +262,8 @@ export function WhatCanIMakeScreen({ navigation }: Props) {
           <PillButton label={t('whatCanIMake.suggestADish')} onPress={() => generate(false)} disabled={!canSubmit} loading={loading} style={{ marginTop: 12 }} />
         </>
       )}
-    </Screen>
+      </ScrollView>
+    </View>
   );
 }
 
