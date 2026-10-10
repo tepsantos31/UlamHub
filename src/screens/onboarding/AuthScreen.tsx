@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, TextInput, Pressable, Alert, StyleSheet } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { RootStackParamList } from '../../navigation/types';
 import { colors, fonts } from '../../theme/theme';
@@ -17,6 +18,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'OnboardingAuth'>;
 type Mode = 'signin' | 'signup';
 
 export function AuthScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -47,7 +49,7 @@ export function AuthScreen({ navigation }: Props) {
 
   const submitPassword = async () => {
     if (!email.trim() || !password) {
-      Alert.alert('Missing info', 'Enter both an email and a password.');
+      Alert.alert(t('auth.missingInfoTitle'), t('auth.missingInfoBoth'));
       return;
     }
     setLoading('password');
@@ -56,9 +58,9 @@ export function AuthScreen({ navigation }: Props) {
         const { needsEmailConfirmation } = await signUpWithPassword(email.trim(), password);
         if (needsEmailConfirmation) {
           Alert.alert(
-            'Check your email',
-            `We sent a confirmation link to ${email.trim()}. Confirm it, then come back and sign in.`,
-            [{ text: 'OK', onPress: () => setMode('signin') }],
+            t('auth.checkEmailTitle'),
+            t('auth.checkEmailConfirmBody', { email: email.trim() }),
+            [{ text: t('common.ok'), onPress: () => setMode('signin') }],
           );
         } else {
           // Confirmation is off on this project — already signed in.
@@ -69,7 +71,7 @@ export function AuthScreen({ navigation }: Props) {
         await afterSignedIn();
       }
     } catch (e: any) {
-      Alert.alert(mode === 'signup' ? 'Sign up failed' : 'Sign in failed', e?.message ?? 'Something went wrong.');
+      Alert.alert(mode === 'signup' ? t('auth.signUpFailed') : t('auth.signInFailed'), e?.message ?? t('common.error'));
     } finally {
       setLoading(null);
     }
@@ -77,15 +79,15 @@ export function AuthScreen({ navigation }: Props) {
 
   const submitMagicLink = async () => {
     if (!email.trim()) {
-      Alert.alert('Missing info', 'Enter your email first.');
+      Alert.alert(t('auth.missingInfoTitle'), t('auth.missingInfoEmail'));
       return;
     }
     setLoading('magic');
     try {
       await signInWithMagicLink(email.trim());
-      Alert.alert('Check your email', `We sent a sign-in link to ${email.trim()}. Open it on this device to continue.`);
+      Alert.alert(t('auth.checkEmailTitle'), t('auth.checkEmailLinkBody', { email: email.trim() }));
     } catch (e: any) {
-      Alert.alert('Could not send link', e?.message ?? 'Something went wrong.');
+      Alert.alert(t('auth.linkFailedTitle'), e?.message ?? t('common.error'));
     } finally {
       setLoading(null);
     }
@@ -97,7 +99,7 @@ export function AuthScreen({ navigation }: Props) {
       await signInWithGoogle(mode === 'signup');
       await afterSignedIn();
     } catch (e: any) {
-      Alert.alert('Google sign-in failed', e?.message ?? 'Something went wrong.');
+      Alert.alert(t('auth.googleFailedTitle'), e?.message ?? t('common.error'));
     } finally {
       setLoading(null);
     }
@@ -109,7 +111,7 @@ export function AuthScreen({ navigation }: Props) {
       await signInWithApple(mode === 'signup');
       await afterSignedIn();
     } catch (e: any) {
-      Alert.alert('Apple sign-in failed', e?.message ?? 'Something went wrong.');
+      Alert.alert(t('auth.appleFailedTitle'), e?.message ?? t('common.error'));
     } finally {
       setLoading(null);
     }
@@ -120,16 +122,16 @@ export function AuthScreen({ navigation }: Props) {
       <View style={styles.logo}>
         <Image source={require('../../../assets/logo-mark.png')} style={styles.logoImage} resizeMode="contain" />
       </View>
-      <Text style={styles.title}>Welcome to your kitchen</Text>
-      <Text style={styles.body}>Save recipes, plan your week, and cook every dish with confidence.</Text>
+      <Text style={styles.title}>{t('auth.welcomeTitle')}</Text>
+      <Text style={styles.body}>{t('auth.welcomeBody')}</Text>
 
       {!supabaseConfigured ? (
         <>
           <View style={{ flex: 1 }} />
           <Text style={styles.notConfigured}>
-            Cloud accounts aren't set up yet on this build — continuing without one for now.
+            {t('auth.notConfigured')}
           </Text>
-          <PillButton label="Continue" onPress={proceedLocally} style={{ marginTop: 12 }} />
+          <PillButton label={t('auth.continue')} onPress={proceedLocally} style={{ marginTop: 12 }} />
         </>
       ) : (
         <>
@@ -138,20 +140,20 @@ export function AuthScreen({ navigation }: Props) {
               onPress={() => setMode('signin')}
               style={[styles.modeTab, mode === 'signin' && styles.modeTabActive]}
             >
-              Sign in
+              {t('auth.signIn')}
             </Text>
             <Text
               onPress={() => setMode('signup')}
               style={[styles.modeTab, mode === 'signup' && styles.modeTabActive]}
             >
-              Create account
+              {t('auth.createAccount')}
             </Text>
           </View>
 
           <TextInput
             value={email}
             onChangeText={setEmail}
-            placeholder="Email"
+            placeholder={t('auth.email')}
             placeholderTextColor={colors.tertiaryText}
             autoCapitalize="none"
             autoCorrect={false}
@@ -162,7 +164,7 @@ export function AuthScreen({ navigation }: Props) {
             <TextInput
               value={password}
               onChangeText={setPassword}
-              placeholder="Password"
+              placeholder={t('auth.password')}
               placeholderTextColor={colors.tertiaryText}
               secureTextEntry={!showPassword}
               style={styles.passwordInput}
@@ -174,13 +176,13 @@ export function AuthScreen({ navigation }: Props) {
           <View style={{ flex: 1 }} />
           <View style={{ gap: 12 }}>
             <PillButton
-              label={mode === 'signup' ? 'Create account' : 'Sign in'}
+              label={mode === 'signup' ? t('auth.createAccount') : t('auth.signIn')}
               onPress={submitPassword}
               loading={loading === 'password'}
               disabled={loading !== null}
             />
             <PillButton
-              label="Email me a sign-in link instead"
+              label={t('auth.magicLinkInstead')}
               onPress={submitMagicLink}
               variant="ghost"
               loading={loading === 'magic'}
@@ -188,7 +190,7 @@ export function AuthScreen({ navigation }: Props) {
             />
             <View style={styles.dividerRow}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
+              <Text style={styles.dividerText}>{t('auth.or')}</Text>
               <View style={styles.dividerLine} />
             </View>
             {appleAvailable && (
@@ -207,14 +209,14 @@ export function AuthScreen({ navigation }: Props) {
             >
               <GoogleIcon />
               <Text style={styles.googleBtnText}>
-                {loading === 'google' ? 'Connecting…' : mode === 'signup' ? 'Sign up with Google' : 'Continue with Google'}
+                {loading === 'google' ? t('auth.connecting') : mode === 'signup' ? t('auth.signUpWithGoogle') : t('auth.continueWithGoogle')}
               </Text>
             </Pressable>
           </View>
         </>
       )}
 
-      <Text style={styles.legal}>By continuing you agree to our Terms & Privacy Policy.</Text>
+      <Text style={styles.legal}>{t('auth.legal')}</Text>
     </Screen>
   );
 }

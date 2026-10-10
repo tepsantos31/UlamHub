@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Alert, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -18,7 +19,16 @@ import { Recipe, SettingsState } from '../types/models';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PartyPlanner'>;
 
-const OCCASIONS = ['Party', 'Birthday', 'Holiday Gathering', 'Reunion', 'Just Because'];
+// `value` is the canonical English string persisted in the party plan (and
+// used in notification text); `labelKey` is only for display, so changing
+// the in-app language never changes a previously-saved plan's stored value.
+const OCCASION_OPTIONS: { value: string; labelKey: string }[] = [
+  { value: 'Party', labelKey: 'partyPlanner.occasions.party' },
+  { value: 'Birthday', labelKey: 'partyPlanner.occasions.birthday' },
+  { value: 'Holiday Gathering', labelKey: 'partyPlanner.occasions.holidayGathering' },
+  { value: 'Reunion', labelKey: 'partyPlanner.occasions.reunion' },
+  { value: 'Just Because', labelKey: 'partyPlanner.occasions.justBecause' },
+];
 const DATE_OPTIONS_COUNT = 60;
 
 function shuffled<T>(arr: T[]): T[] {
@@ -30,28 +40,32 @@ function shuffled<T>(arr: T[]): T[] {
   return copy;
 }
 
-function nextDays(count: number): { iso: string; weekday: string; day: string; month: string }[] {
+function localeTag(language: string): string {
+  return language === 'es' ? 'es-ES' : 'en-US';
+}
+
+function nextDays(count: number, language: string): { iso: string; weekday: string; day: string; month: string }[] {
   const today = new Date();
   return Array.from({ length: count }, (_, i) => {
     const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
     const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     return {
       iso,
-      weekday: d.toLocaleDateString(undefined, { weekday: 'short' }),
+      weekday: d.toLocaleDateString(localeTag(language), { weekday: 'short' }),
       day: String(d.getDate()),
-      month: d.toLocaleDateString(undefined, { month: 'short' }),
+      month: d.toLocaleDateString(localeTag(language), { month: 'short' }),
     };
   });
 }
 
-function formatIsoDate(iso: string): string {
-  return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+function formatIsoDate(iso: string, language: string): string {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString(localeTag(language), { weekday: 'long', month: 'long', day: 'numeric' });
 }
 
-function dateMinusDays(iso: string, days: number): string {
+function dateMinusDays(iso: string, days: number, language: string): string {
   const d = new Date(`${iso}T00:00:00`);
   d.setDate(d.getDate() - days);
-  return d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  return d.toLocaleDateString(localeTag(language), { weekday: 'long', month: 'long', day: 'numeric' });
 }
 
 /** 9am on the reminder day — scheduled notifications need an actual Date,
@@ -64,15 +78,21 @@ function reminderFireDate(iso: string, daysBefore: number): Date {
 }
 
 export function PartyPlannerScreen({ route, navigation }: Props) {
+  const { t, i18n } = useTranslation();
   const [occasion, setOccasion] = useState(DEFAULT_PARTY_PLAN.occasion);
   const [allRecipes, setAllRecipes] = useState<Recipe[]>([]);
   const [selectedDishes, setSelectedDishes] = useState<Recipe[]>([]);
   const [partyDate, setPartyDate] = useState<string | null>(null);
   const [remindDaysBefore, setRemindDaysBefore] = useState(3);
   const [settings, setSettingsState] = useState<SettingsState | null>(null);
-  const [dateOptions] = useState(() => nextDays(DATE_OPTIONS_COUNT));
+  const [dateOptions] = useState(() => nextDays(DATE_OPTIONS_COUNT, i18n.language));
   const hydratedRef = useRef(false);
   const notificationIdRef = useRef<string | null>(null);
+
+  const occasionLabel = (value: string): string => {
+    const found = OCCASION_OPTIONS.find((o) => o.value === value);
+    return found ? t(found.labelKey) : value;
+  };
 
   // The dish count is never independent state — it's always exactly how
   // many dishes are currently in the spread, so it can't drift out of sync
@@ -122,7 +142,7 @@ export function PartyPlannerScreen({ route, navigation }: Props) {
 
   const generate = () => {
     if (allRecipes.length === 0) {
-      Alert.alert('No recipes yet', 'Add some recipes first, then I can put together a spread.');
+      Alert.alert(t('mealPlanner.alerts.noRecipesTitle'), t('partyPlanner.alerts.noRecipesBody'));
       return;
     }
     const count = Math.min(dishCount || 6, allRecipes.length);
@@ -139,7 +159,7 @@ export function PartyPlannerScreen({ route, navigation }: Props) {
   const addOneDish = () => {
     const next = allRecipes.find((r) => !selectedDishes.some((d) => d.id === r.id));
     if (!next) {
-      Alert.alert('No more recipes', "You've already added every recipe you have.");
+      Alert.alert(t('partyPlanner.alerts.noMoreRecipesTitle'), t('partyPlanner.alerts.noMoreRecipesBody'));
       return;
     }
     setSelectedDishes((prev) => [...prev, next]);
@@ -166,7 +186,11 @@ export function PartyPlannerScreen({ route, navigation }: Props) {
     // below is still saved either way, it just won't fire a reminder.
     if (settings?.notif.party && partyDate && remindDaysBefore != null) {
       const fireAt = reminderFireDate(partyDate, remindDaysBefore);
-      const id = await schedulePartyReminder(fireAt, `${occasion} reminder`, `Your party is coming up — time to get ready!`);
+      const id = await schedulePartyReminder(
+        fireAt,
+        t('partyPlanner.reminderTitle', { occasion: occasionLabel(occasion) }),
+        t('partyPlanner.reminderBody'),
+      );
       if (id) {
         notificationIdRef.current = id;
       } else if (fireAt.getTime() > Date.now()) {
@@ -183,20 +207,17 @@ export function PartyPlannerScreen({ route, navigation }: Props) {
       notificationId: notificationIdRef.current,
     });
     if (permissionDenied) {
-      Alert.alert(
-        'Saved — reminder not scheduled',
-        "Your party plan is saved, but notification permission isn't granted, so the reminder won't fire. Enable notifications for UlamHub in your device Settings to turn that on.",
-      );
+      Alert.alert(t('partyPlanner.alerts.savedNoReminderTitle'), t('partyPlanner.alerts.savedNoReminderBody'));
     } else {
-      Alert.alert('Saved', "Your party plan is saved — it'll be here next time you open Party Planner.");
+      Alert.alert(t('partyPlanner.alerts.savedTitle'), t('partyPlanner.alerts.savedBody'));
     }
   };
 
   const onClear = () => {
-    Alert.alert('Clear party plan', 'This resets your selected dishes, date, and reminder.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('partyPlanner.alerts.clearPlanTitle'), t('partyPlanner.alerts.clearPlanBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Clear',
+        text: t('mealPlanner.clear'),
         style: 'destructive',
         onPress: async () => {
           if (notificationIdRef.current) {
@@ -219,19 +240,19 @@ export function PartyPlannerScreen({ route, navigation }: Props) {
       <View style={styles.badge}>
         <Text style={{ fontSize: 22 }}>🎉</Text>
       </View>
-      <Text style={styles.title}>Party Planner</Text>
-      <Text style={styles.subtitle}>Pick how many dishes you want, then choose them yourself or let me surprise you.</Text>
+      <Text style={styles.title}>{t('partyPlanner.title')}</Text>
+      <Text style={styles.subtitle}>{t('partyPlanner.subtitle')}</Text>
 
       {settings && !isSubscriptionActive(settings) ? (
         <PremiumGate
           icon="🎉"
-          title="Party Planner is a Premium tool"
-          body="Building a full spread is a Premium feature — subscribe to UlamHub Premium to unlock it."
+          title={t('partyPlanner.premiumToolTitle')}
+          body={t('partyPlanner.premiumToolBody')}
           onGoPremium={() => navigation.navigate('Paywall')}
         />
       ) : (
         <>
-          <Text style={styles.label}>How many dishes?</Text>
+          <Text style={styles.label}>{t('partyPlanner.howManyDishes')}</Text>
           <View style={styles.stepperRow}>
             <Pressable onPress={removeOneDish} disabled={dishCount === 0} style={[styles.stepperBtn, dishCount === 0 && styles.stepperBtnDisabled]}>
               <Text style={styles.stepperBtnText}>–</Text>
@@ -242,14 +263,14 @@ export function PartyPlannerScreen({ route, navigation }: Props) {
             </Pressable>
           </View>
 
-          <Text style={styles.label}>Occasion</Text>
+          <Text style={styles.label}>{t('partyPlanner.occasion')}</Text>
           <View style={styles.chipWrap}>
-            {OCCASIONS.map((o) => (
-              <Chip key={o} label={o} active={occasion === o} onPress={() => setOccasion(o)} small />
+            {OCCASION_OPTIONS.map((o) => (
+              <Chip key={o.value} label={t(o.labelKey)} active={occasion === o.value} onPress={() => setOccasion(o.value)} small />
             ))}
           </View>
 
-          <Text style={styles.label}>When is the party?</Text>
+          <Text style={styles.label}>{t('partyPlanner.whenIsTheParty')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
             {dateOptions.map((d) => {
               const active = partyDate === d.iso;
@@ -266,11 +287,11 @@ export function PartyPlannerScreen({ route, navigation }: Props) {
               );
             })}
           </ScrollView>
-          {partyDate && <Text style={styles.dateChosenText}>🎉 {formatIsoDate(partyDate)}</Text>}
+          {partyDate && <Text style={styles.dateChosenText}>🎉 {formatIsoDate(partyDate, i18n.language)}</Text>}
 
           {partyDate && (
             <>
-              <Text style={styles.label}>Remind me how many days before?</Text>
+              <Text style={styles.label}>{t('partyPlanner.remindMeHowManyDays')}</Text>
               <View style={styles.stepperRow}>
                 <Pressable onPress={() => setRemindDaysBefore((g) => Math.max(0, g - 1))} style={styles.stepperBtn}>
                   <Text style={styles.stepperBtnText}>–</Text>
@@ -282,23 +303,21 @@ export function PartyPlannerScreen({ route, navigation }: Props) {
               </View>
               <Text style={styles.reminderNote}>
                 {remindDaysBefore === 0
-                  ? "We'll remind you on the day of the party."
-                  : `We'll remind you on ${dateMinusDays(partyDate, remindDaysBefore)}.`}
+                  ? t('partyPlanner.remindOnDayOf')
+                  : t('partyPlanner.remindOnDate', { date: dateMinusDays(partyDate, remindDaysBefore, i18n.language) })}
               </Text>
             </>
           )}
 
           <View style={styles.actionsRow}>
-            <PillButton label="Select Dishes" onPress={openPicker} variant="secondary" style={{ flex: 1 }} />
-            <PillButton label="✨ Generate spread" onPress={generate} style={{ flex: 1 }} />
+            <PillButton label={t('partyPlanner.selectDishes')} onPress={openPicker} variant="secondary" style={{ flex: 1 }} />
+            <PillButton label={`✨ ${t('partyPlanner.generateSpread')}`} onPress={generate} style={{ flex: 1 }} />
           </View>
 
           {selectedDishes.length > 0 && (
             <View style={styles.resultWrap}>
-              <Text style={styles.themeTitle}>{occasion} Spread</Text>
-              <Text style={styles.budgetEstimate}>
-                {selectedDishes.length} dish{selectedDishes.length === 1 ? '' : 'es'} selected
-              </Text>
+              <Text style={styles.themeTitle}>{t('partyPlanner.occasionSpread', { occasion: occasionLabel(occasion) })}</Text>
+              <Text style={styles.budgetEstimate}>{t('partyPlanner.dishesSelected', { count: selectedDishes.length })}</Text>
 
               <View style={{ gap: 10, marginTop: 16 }}>
                 {selectedDishes.map((d) => (
@@ -319,11 +338,11 @@ export function PartyPlannerScreen({ route, navigation }: Props) {
           )}
 
           <View style={styles.actionsRow}>
-            <PillButton label="Clear" onPress={onClear} variant="secondary" style={{ flex: 1 }} />
-            <PillButton label="Save" onPress={onSave} style={{ flex: 1 }} />
+            <PillButton label={t('mealPlanner.clear')} onPress={onClear} variant="secondary" style={{ flex: 1 }} />
+            <PillButton label={t('common.save')} onPress={onSave} style={{ flex: 1 }} />
           </View>
 
-          <PillButton label="Return to Homescreen" onPress={goHome} variant="secondary" style={{ marginTop: 12 }} />
+          <PillButton label={t('partyPlanner.returnToHomescreen')} onPress={goHome} variant="secondary" style={{ marginTop: 12 }} />
         </>
       )}
     </Screen>

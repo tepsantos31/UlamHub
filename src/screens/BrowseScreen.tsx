@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -23,6 +24,7 @@ type Nav = CompositeNavigationProp<
 const COUNTRY_TINTS = ['#F7ECD9', '#E9EBDD', '#F5E4E4', '#E4EBD6', '#E2ECE4', '#F1E7DA'];
 
 export function BrowseScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const route = useRoute<RouteProp<MainTabParamList, 'Browse'>>();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -59,32 +61,32 @@ export function BrowseScreen() {
 
   return (
     <Screen>
-      <Text style={styles.title}>Explore</Text>
+      <Text style={styles.title}>{t('browse.title')}</Text>
 
       <View style={[styles.searchBar, shadow.soft]}>
         <SearchIcon size={18} />
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Ingredient, dish, or cuisine name"
+          placeholder={t('browse.searchPlaceholder')}
           placeholderTextColor={colors.tertiaryText}
           style={styles.searchInput}
         />
       </View>
 
-      <Text style={styles.sectionTitle}>Cook by cuisine</Text>
+      <Text style={styles.sectionTitle}>{t('browse.cookByCuisine')}</Text>
       <View style={styles.countryGrid}>
         {COUNTRIES.map((c, i) => (
           <Pressable key={c} onPress={() => setFilter(c)} style={[styles.countryCard, { backgroundColor: COUNTRY_TINTS[i % COUNTRY_TINTS.length] }]}>
             <Text style={styles.countryName}>{c}</Text>
-            <Text style={styles.countryCount}>{countryCounts.get(c) ?? 0} recipes</Text>
+            <Text style={styles.countryCount}>{t('browse.recipeCount', { count: countryCounts.get(c) ?? 0 })}</Text>
           </Pressable>
         ))}
       </View>
 
       <View style={styles.resultsHeader}>
-        <Text style={styles.sectionTitle}>Recommended for you</Text>
-        <Text style={styles.resultsCount}>{filtered.length} results</Text>
+        <Text style={styles.sectionTitle}>{t('browse.recommendedForYou')}</Text>
+        <Text style={styles.resultsCount}>{t('browse.resultCount', { count: filtered.length })}</Text>
       </View>
       <View style={styles.grid}>
         {filtered.map((r) => (

@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, ActivityIndicator, Alert } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { colors } from '../theme/theme';
@@ -11,6 +12,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'KitchenJoin'>;
  * (ulamhub://kitchen/join?code=XXXX). Looks the kitchen up, confirms with
  * the user, then sends a join request — the owner still has to approve it. */
 export function KitchenJoinScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const code = route.params?.code;
 
   useEffect(() => {
@@ -21,16 +23,16 @@ export function KitchenJoinScreen({ route, navigation }: Props) {
       }
       try {
         const found = await lookupKitchenByCode(code);
-        Alert.alert('Request to join', `Ask to join "${found.name}"? The owner will need to approve it first.`, [
-          { text: 'Cancel', style: 'cancel', onPress: () => navigation.replace('Kitchen') },
+        Alert.alert(t('kitchenJoin.requestToJoinTitle'), t('kitchenJoin.requestToJoinBody', { name: found.name }), [
+          { text: t('common.cancel'), style: 'cancel', onPress: () => navigation.replace('Kitchen') },
           {
-            text: 'Request to join',
+            text: t('kitchen.requestToJoin'),
             onPress: async () => {
               try {
                 await requestJoinKitchenById(found.id);
-                Alert.alert('Request sent', `We'll let you know once ${found.name} approves it.`);
+                Alert.alert(t('kitchen.alerts.requestSentTitle'), t('kitchen.alerts.requestSentBody', { name: found.name }));
               } catch (e: any) {
-                Alert.alert('Could not send request', e?.message ?? 'Something went wrong.');
+                Alert.alert(t('kitchen.alerts.couldNotSendRequestTitle'), e?.message ?? t('kitchen.alerts.somethingWentWrong'));
               } finally {
                 navigation.replace('Kitchen');
               }
@@ -38,7 +40,7 @@ export function KitchenJoinScreen({ route, navigation }: Props) {
           },
         ]);
       } catch (e: any) {
-        Alert.alert('Could not find that kitchen', e?.message ?? 'The invite link may be invalid.');
+        Alert.alert(t('kitchenJoin.notFoundTitle'), e?.message ?? t('kitchenJoin.notFoundBody'));
         navigation.replace('Kitchen');
       }
     })();

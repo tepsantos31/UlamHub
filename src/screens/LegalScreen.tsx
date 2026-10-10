@@ -1,5 +1,6 @@
 import React from 'react';
 import { Text, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { colors, fonts } from '../theme/theme';
@@ -107,14 +108,19 @@ const TERMS: Section[] = [
   },
 ];
 
+// The PRIVACY/TERMS section content below stays English-only even when the
+// app language is Spanish — legal/compliance text needs an accurate,
+// professionally reviewed translation rather than a mechanical one, so only
+// this screen's chrome (title, "last updated" label) is localized for now.
 export function LegalScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { doc } = route.params;
   const sections = doc === 'privacy' ? PRIVACY : TERMS;
 
   return (
     <Screen>
-      <HeaderBar title={doc === 'privacy' ? 'Privacy Policy' : 'Terms of Service'} onBack={() => navigation.goBack()} />
-      <Text style={styles.updated}>Last updated {LAST_UPDATED}</Text>
+      <HeaderBar title={doc === 'privacy' ? t('profile.privacyPolicy') : t('profile.termsOfService')} onBack={() => navigation.goBack()} />
+      <Text style={styles.updated}>{t('legal.lastUpdated', { date: LAST_UPDATED })}</Text>
       {sections.map((s) => (
         <React.Fragment key={s.heading}>
           <Text style={styles.heading}>{s.heading}</Text>

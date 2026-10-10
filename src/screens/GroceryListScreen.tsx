@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, Pressable, TextInput, Alert, Share, Linking, ActivityIndicator, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, fonts, radii, shadow } from '../theme/theme';
@@ -28,6 +29,7 @@ interface SubstituteState {
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export function GroceryListScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const [groups, setGroups] = useState<GroceryGroup[]>([]);
   const [diaspora, setDiaspora] = useState(false);
@@ -66,9 +68,9 @@ export function GroceryListScreen() {
 
   const requirePremium = (): boolean => {
     if (settings && isSubscriptionActive(settings)) return true;
-    Alert.alert('Premium feature', 'Ingredient substitutes use Kitchen AI — subscribe to UlamHub Premium to unlock it.', [
-      { text: 'Not now', style: 'cancel' },
-      { text: 'Go Premium', onPress: () => navigation.navigate('Paywall') },
+    Alert.alert(t('grocery.alerts.premiumFeatureTitle'), t('grocery.alerts.substitutePremiumBody'), [
+      { text: t('grocery.alerts.notNow'), style: 'cancel' },
+      { text: t('grocery.alerts.goPremium'), onPress: () => navigation.navigate('Paywall') },
     ]);
     return false;
   };
@@ -98,7 +100,7 @@ export function GroceryListScreen() {
     } catch (e: any) {
       setSubstitutes((prev) => ({
         ...prev,
-        [key]: { loading: false, error: e?.message ?? "Couldn't reach Kitchen AI — make sure the backend server is running." },
+        [key]: { loading: false, error: e?.message ?? t('grocery.alerts.kitchenAIUnreachable') },
       }));
     }
   };
@@ -112,23 +114,23 @@ export function GroceryListScreen() {
 
   const shareList = () => {
     const lines = groups.flatMap((g) => [`${g.name}:`, ...g.items.map((it) => `  ${it.checked ? '✓' : '•'} ${it.n} ${it.q}`.trim())]);
-    Share.share({ message: lines.join('\n') || 'My UlamHub grocery list is empty right now.' });
+    Share.share({ message: lines.join('\n') || t('grocery.emptyListShareMessage') });
   };
 
   const findNearestStore = () => {
     const query = homeCuisine ? `${homeCuisine} grocery store` : 'international grocery store';
     const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
     Linking.openURL(url).catch(() => {
-      Alert.alert('Could not open Maps', "Your device doesn't seem to have a maps app or browser available.");
+      Alert.alert(t('grocery.alerts.couldNotOpenMapsTitle'), t('grocery.alerts.couldNotOpenMapsBody'));
     });
   };
 
   const onClear = () => {
     if (total === 0) return;
-    Alert.alert('Clear grocery list', 'This removes every item currently on your list.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('grocery.alerts.clearListTitle'), t('grocery.alerts.clearListBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Clear list',
+        text: t('grocery.clearList'),
         style: 'destructive',
         onPress: async () => {
           const next = await clearGrocery();
@@ -150,26 +152,24 @@ export function GroceryListScreen() {
   return (
     <Screen>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Grocery List</Text>
+        <Text style={styles.title}>{t('grocery.title')}</Text>
         <Pressable onPress={shareList} style={[styles.shareBtn, shadow.soft]}>
           <ShareIcon size={18} color="#2C4642" />
         </Pressable>
       </View>
-      <Text style={styles.subline}>
-        {done} of {total} items
-      </Text>
+      <Text style={styles.subline}>{t('grocery.itemsProgress', { done, total })}</Text>
 
       <View style={styles.diasporaRow}>
         <View style={{ flex: 1, paddingRight: 12 }}>
-          <Text style={styles.diasporaTitle}>Cooking abroad?</Text>
-          <Text style={styles.diasporaSub}>Get substitutes & find the nearest specialty grocery store</Text>
+          <Text style={styles.diasporaTitle}>{t('grocery.cookingAbroad')}</Text>
+          <Text style={styles.diasporaSub}>{t('grocery.cookingAbroadSub')}</Text>
         </View>
         <ToggleSwitch value={diaspora} onValueChange={onToggleDiaspora} />
       </View>
       {diaspora && (
         <View style={styles.subsBox}>
           <Text style={styles.subsText}>
-            🔁 Substituting:{' '}
+            🔁 {t('grocery.substituting')}{' '}
             {ABROAD_SUBSTITUTIONS.map(([a, b]) => (
               <Text key={a} style={{ fontFamily: fonts.bodyBold }}>
                 {a} → {b}
@@ -177,14 +177,14 @@ export function GroceryListScreen() {
               </Text>
             ))}
             <Text style={{ color: colors.tealLink, fontFamily: fonts.bodyBold }} onPress={findNearestStore}>
-              Find nearest specialty store →
+              {t('grocery.findNearestStore')}
             </Text>
           </Text>
         </View>
       )}
 
       <Pressable onPress={() => navigation.navigate('IngredientScanner')} style={styles.scanLink}>
-        <Text style={styles.scanLinkText}>🔍 Don't recognize an ingredient? Scan it</Text>
+        <Text style={styles.scanLinkText}>🔍 {t('grocery.scanIngredient')}</Text>
       </Pressable>
 
       <View style={{ gap: 16, marginTop: 20 }}>
@@ -208,7 +208,7 @@ export function GroceryListScreen() {
                         <Text style={styles.itemQty}>{it.q}</Text>
                       </Pressable>
                       <Pressable onPress={() => toggleSubstitute(gi, ii, it.n)} style={styles.subBtn} hitSlop={6}>
-                        <Text style={styles.subBtnText}>{sub ? 'Hide' : 'Substitute'}</Text>
+                        <Text style={styles.subBtnText}>{sub ? t('recipeDetail.hide') : t('grocery.substitute')}</Text>
                       </Pressable>
                     </View>
                     {sub && (
@@ -239,28 +239,28 @@ export function GroceryListScreen() {
           <TextInput
             value={manualName}
             onChangeText={setManualName}
-            placeholder="Item name"
+            placeholder={t('grocery.itemNamePlaceholder')}
             placeholderTextColor={colors.tertiaryText}
             style={styles.manualInput}
           />
           <TextInput
             value={manualQty}
             onChangeText={setManualQty}
-            placeholder="Qty (optional)"
+            placeholder={t('grocery.qtyOptionalPlaceholder')}
             placeholderTextColor={colors.tertiaryText}
             style={styles.manualInput}
           />
           <Pressable onPress={onAddManual} style={styles.manualAddBtn}>
-            <Text style={styles.manualAddBtnText}>Add item</Text>
+            <Text style={styles.manualAddBtnText}>{t('grocery.addItem')}</Text>
           </Pressable>
         </View>
       ) : (
         <Pressable onPress={() => setShowManual(true)} style={{ marginTop: 16 }}>
-          <Text style={styles.addManualText}>＋ Add item manually</Text>
+          <Text style={styles.addManualText}>＋ {t('grocery.addItemManually')}</Text>
         </Pressable>
       )}
 
-      {total > 0 && <PillButton label="Clear list" onPress={onClear} variant="secondary" style={{ marginTop: 24 }} />}
+      {total > 0 && <PillButton label={t('grocery.clearList')} onPress={onClear} variant="secondary" style={{ marginTop: 24 }} />}
     </Screen>
   );
 }

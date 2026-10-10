@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, Pressable, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -17,6 +18,7 @@ import { SettingsState } from '../types/models';
 type Props = NativeStackScreenProps<RootStackParamList, 'IngredientScanner'>;
 
 export function IngredientScannerScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ScannedIngredient | null>(null);
   const [settings, setSettingsState] = useState<SettingsState | null>(null);
@@ -34,7 +36,7 @@ export function IngredientScannerScreen({ navigation }: Props) {
       const res = await scanIngredient({ imageBase64: base64 });
       setResult(res);
     } catch (e: any) {
-      Alert.alert('Scan failed', e?.message ?? 'Could not reach the AI backend. Is the server running?');
+      Alert.alert(t('ingredientScanner.alerts.scanFailedTitle'), e?.message ?? t('addRecipe.alerts.extractionFailedBody'));
     } finally {
       setLoading(false);
     }
@@ -43,7 +45,7 @@ export function IngredientScannerScreen({ navigation }: Props) {
   const fromCamera = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Permission needed', 'Camera access is required to scan an ingredient live.');
+      Alert.alert(t('recipeDetail.alerts.permissionNeededTitle'), t('ingredientScanner.alerts.cameraPermissionBody'));
       return;
     }
     const res = await ImagePicker.launchCameraAsync({ base64: true, quality: 0.7 });
@@ -54,7 +56,7 @@ export function IngredientScannerScreen({ navigation }: Props) {
   const fromLibrary = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Permission needed', 'Photo library access is required.');
+      Alert.alert(t('recipeDetail.alerts.permissionNeededTitle'), t('ingredientScanner.alerts.libraryPermissionBody'));
       return;
     }
     const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], base64: true, quality: 0.7 });
@@ -68,14 +70,14 @@ export function IngredientScannerScreen({ navigation }: Props) {
       <View style={styles.badge}>
         <Text style={{ fontSize: 22 }}>🔍</Text>
       </View>
-      <Text style={styles.title}>Ingredient Scanner</Text>
-      <Text style={styles.subtitle}>At the market or an unfamiliar grocery aisle? Snap it and I'll tell you what it is.</Text>
+      <Text style={styles.title}>{t('ingredientScanner.title')}</Text>
+      <Text style={styles.subtitle}>{t('ingredientScanner.subtitle')}</Text>
 
       {settings && !isSubscriptionActive(settings) ? (
         <PremiumGate
           icon="🔍"
-          title="Ingredient Scanner is a Premium tool"
-          body="Identifying ingredients from a photo uses Kitchen AI — subscribe to UlamHub Premium to unlock it."
+          title={t('ingredientScanner.premiumToolTitle')}
+          body={t('ingredientScanner.premiumToolBody')}
           onGoPremium={() => navigation.navigate('Paywall')}
         />
       ) : (
@@ -83,18 +85,18 @@ export function IngredientScannerScreen({ navigation }: Props) {
       <View style={styles.actionsRow}>
         <Pressable onPress={fromCamera} style={[styles.actionCard, shadow.soft]}>
           <Text style={{ fontSize: 22 }}>📸</Text>
-          <Text style={styles.actionLabel}>Take a photo</Text>
+          <Text style={styles.actionLabel}>{t('leftoverAlchemist.takeAPhoto')}</Text>
         </Pressable>
         <Pressable onPress={fromLibrary} style={[styles.actionCard, shadow.soft]}>
           <Text style={{ fontSize: 22 }}>🖼️</Text>
-          <Text style={styles.actionLabel}>Choose from library</Text>
+          <Text style={styles.actionLabel}>{t('recipeDetail.alerts.chooseFromLibrary')}</Text>
         </Pressable>
       </View>
 
       {loading && (
         <View style={styles.loadingBox}>
           <ActivityIndicator color={colors.tealDark} />
-          <Text style={styles.loadingText}>Identifying…</Text>
+          <Text style={styles.loadingText}>{t('ingredientScanner.identifying')}</Text>
         </View>
       )}
 
@@ -117,7 +119,7 @@ export function IngredientScannerScreen({ navigation }: Props) {
 
           {result.commonUses.length > 0 && (
             <>
-              <Text style={styles.sectionLabel}>Common uses</Text>
+              <Text style={styles.sectionLabel}>{t('ingredientScanner.commonUses')}</Text>
               {result.commonUses.map((u) => (
                 <Text key={u} style={styles.listItem}>
                   • {u}
@@ -128,7 +130,7 @@ export function IngredientScannerScreen({ navigation }: Props) {
 
           {result.substitutes.length > 0 && (
             <>
-              <Text style={styles.sectionLabel}>Substitutes</Text>
+              <Text style={styles.sectionLabel}>{t('ingredientScanner.substitutesLabel')}</Text>
               {result.substitutes.map((s) => (
                 <Text key={s} style={styles.listItem}>
                   • {s}
@@ -137,7 +139,7 @@ export function IngredientScannerScreen({ navigation }: Props) {
             </>
           )}
 
-          <PillButton label="Scan another" onPress={() => setResult(null)} variant="secondary" style={{ marginTop: 18 }} />
+          <PillButton label={t('ingredientScanner.scanAnother')} onPress={() => setResult(null)} variant="secondary" style={{ marginTop: 18 }} />
         </View>
       )}
         </>

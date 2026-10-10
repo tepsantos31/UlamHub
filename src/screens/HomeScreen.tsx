@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation, CompositeNavigationProp } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -21,13 +22,14 @@ type Nav = CompositeNavigationProp<
   NativeStackNavigationProp<RootStackParamList>
 >;
 
-const AI_TOOLS: { label: string; desc: string; icon: string; tint: string; route: 'LeftoverAlchemist' | 'IngredientScanner' | 'PartyPlanner' }[] = [
-  { label: 'Leftover Alchemist', desc: 'Turn what you have into something new', icon: '🧪', tint: colors.coralBg, route: 'LeftoverAlchemist' },
-  { label: 'Ingredient Scanner', desc: "Snap it, I'll tell you what it is", icon: '🔍', tint: colors.mint, route: 'IngredientScanner' },
-  { label: 'Party Planner', desc: 'A full spread, built for you', icon: '🎉', tint: colors.gold, route: 'PartyPlanner' },
+const AI_TOOLS: { labelKey: string; descKey: string; icon: string; tint: string; route: 'LeftoverAlchemist' | 'IngredientScanner' | 'PartyPlanner' }[] = [
+  { labelKey: 'home.leftoverAlchemist', descKey: 'home.leftoverAlchemistDesc', icon: '🧪', tint: colors.coralBg, route: 'LeftoverAlchemist' },
+  { labelKey: 'home.ingredientScanner', descKey: 'home.ingredientScannerDesc', icon: '🔍', tint: colors.mint, route: 'IngredientScanner' },
+  { labelKey: 'home.partyPlanner', descKey: 'home.partyPlannerDesc', icon: '🎉', tint: colors.gold, route: 'PartyPlanner' },
 ];
 
 export function HomeScreen() {
+  const { t, i18n } = useTranslation();
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -61,26 +63,26 @@ export function HomeScreen() {
   const byId = new Map(recipes.map((r) => [r.id, r]));
   const myRecipes = recipes.filter((r) => r.userAdded);
 
-  const trendingCards = trending.map((t) => {
+  const trendingCards = trending.map((tr) => {
     // A trending recipe is very often someone else's — the trending RPC only
     // returns a few display fields (see fetchTrendingRecipes), not the full
     // recipe, so this card is a stand-in until the user actually opens
     // SharedRecipe to pull the whole thing. `local` covers the one case
     // where this account happens to own/have saved that same recipe id too.
-    const local = byId.get(t.id);
+    const local = byId.get(tr.id);
     const display: Recipe =
       local ?? {
-        id: t.id,
-        name: t.name,
-        country: t.country,
-        type: t.type,
+        id: tr.id,
+        name: tr.name,
+        country: tr.country,
+        type: tr.type,
         time: 0,
         kcal: 0,
         rating: 0,
         cooks: 0,
         budget: '$$',
         diff: 'Home cook',
-        author: 'a fellow cook',
+        author: t('home.aFellowCook'),
         servingsBase: 4,
         ingredients: [],
         steps: [],
@@ -90,8 +92,8 @@ export function HomeScreen() {
       };
     const onPress = local
       ? () => navigation.navigate('RecipeDetail', { recipeId: local.id })
-      : () => navigation.navigate('SharedRecipe', { rowId: t.rowId });
-    return { key: t.rowId, recipe: display, shareCount: t.shareCount, onPress };
+      : () => navigation.navigate('SharedRecipe', { rowId: tr.rowId });
+    return { key: tr.rowId, recipe: display, shareCount: tr.shareCount, onPress };
   });
 
   return (
@@ -101,9 +103,9 @@ export function HomeScreen() {
           <Text style={styles.avatarText}>{avatarInitial}</Text>
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={styles.greeting}>Hi, {name} 👋</Text>
+          <Text style={styles.greeting}>{t('home.greeting', { name })}</Text>
           <Text style={styles.date}>
-            {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+            {new Date().toLocaleDateString(i18n.language === 'es' ? 'es-ES' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </Text>
         </View>
         <Pressable onPress={() => navigation.navigate('Notifications')} style={[styles.bellBtn, shadow.soft]}>
@@ -112,19 +114,19 @@ export function HomeScreen() {
         </Pressable>
       </View>
 
-      <Text style={styles.hero}>What's cooking today?</Text>
+      <Text style={styles.hero}>{t('home.hero')}</Text>
 
       <Pressable onPress={() => navigation.navigate('Browse')} style={[styles.searchBar, shadow.soft]}>
         <SearchIcon />
-        <Text style={styles.searchPlaceholder}>Search dishes, cuisines, or ingredients…</Text>
+        <Text style={styles.searchPlaceholder}>{t('home.searchPlaceholder')}</Text>
       </Pressable>
 
       <View style={styles.quickRow}>
         {[
-          { label: 'Add Recipe', icon: '➕', tint: colors.mint, onPress: () => navigation.navigate('AddRecipe') },
-          { label: 'Plan Week', icon: '📅', tint: colors.gold, onPress: () => navigation.navigate('Planner') },
-          { label: 'Grocery', icon: '🧺', tint: '#E9EBDD', onPress: () => navigation.navigate('Grocery') },
-          { label: 'Ask AI', icon: '✨', tint: colors.coralBg, onPress: () => navigation.navigate('KitchenAI') },
+          { label: t('home.addRecipe'), icon: '➕', tint: colors.mint, onPress: () => navigation.navigate('AddRecipe') },
+          { label: t('home.planWeek'), icon: '📅', tint: colors.gold, onPress: () => navigation.navigate('Planner') },
+          { label: t('home.grocery'), icon: '🧺', tint: '#E9EBDD', onPress: () => navigation.navigate('Grocery') },
+          { label: t('home.askAI'), icon: '✨', tint: colors.coralBg, onPress: () => navigation.navigate('KitchenAI') },
         ].map((q) => (
           <Pressable key={q.label} onPress={q.onPress} style={[styles.quickBtn, shadow.card]}>
             <View style={[styles.quickIcon, { backgroundColor: q.tint }]}>
@@ -135,7 +137,7 @@ export function HomeScreen() {
         ))}
       </View>
 
-      <SectionHeader title="My Recipes" right="See all →" onPressRight={() => navigation.navigate('MyRecipes')} />
+      <SectionHeader title={t('home.myRecipes')} right={t('home.seeAll')} onPressRight={() => navigation.navigate('MyRecipes')} />
       {myRecipes.length > 0 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hScroll}>
           {myRecipes.slice(0, 6).map((r) => (
@@ -149,24 +151,24 @@ export function HomeScreen() {
         </ScrollView>
       ) : (
         <Pressable onPress={() => navigation.navigate('AddRecipe')} style={[styles.emptyMyRecipes, shadow.card]}>
-          <Text style={styles.emptyMyRecipesText}>You haven't added any recipes yet — tap to add your first one</Text>
+          <Text style={styles.emptyMyRecipesText}>{t('home.noRecipesYet')}</Text>
         </Pressable>
       )}
 
-      <SectionHeader title="AI Kitchen Tools" />
+      <SectionHeader title={t('home.aiKitchenTools')} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hScroll}>
-        {AI_TOOLS.map((t) => (
-          <Pressable key={t.label} onPress={() => navigation.navigate(t.route)} style={[styles.toolCard, shadow.card]}>
-            <View style={[styles.toolIcon, { backgroundColor: t.tint }]}>
-              <Text style={{ fontSize: 20 }}>{t.icon}</Text>
+        {AI_TOOLS.map((tool) => (
+          <Pressable key={tool.labelKey} onPress={() => navigation.navigate(tool.route)} style={[styles.toolCard, shadow.card]}>
+            <View style={[styles.toolIcon, { backgroundColor: tool.tint }]}>
+              <Text style={{ fontSize: 20 }}>{tool.icon}</Text>
             </View>
             {settings && !isSubscriptionActive(settings) && (
               <View style={styles.toolLockBadge}>
                 <Text style={{ fontSize: 10 }}>🔒</Text>
               </View>
             )}
-            <Text style={styles.toolLabel}>{t.label}</Text>
-            <Text style={styles.toolDesc}>{t.desc}</Text>
+            <Text style={styles.toolLabel}>{t(tool.labelKey)}</Text>
+            <Text style={styles.toolDesc}>{t(tool.descKey)}</Text>
           </Pressable>
         ))}
       </ScrollView>
@@ -176,18 +178,18 @@ export function HomeScreen() {
           <Text style={{ fontSize: 20 }}>👨‍🍳</Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.kitchenTitle}>Kitchen</Text>
-          <Text style={styles.kitchenBody}>Join a kitchen and browse each other's recipes</Text>
+          <Text style={styles.kitchenTitle}>{t('home.kitchen')}</Text>
+          <Text style={styles.kitchenBody}>{t('home.kitchenBody')}</Text>
         </View>
         <Text style={styles.kitchenArrow}>→</Text>
       </Pressable>
 
-      <SectionHeader title="Trending in the community" />
+      <SectionHeader title={t('home.trending')} />
       {settings && !isSubscriptionActive(settings) ? (
         <Pressable onPress={() => navigation.navigate('Paywall')} style={[styles.emptyMyRecipes, shadow.card]}>
           <Text style={{ fontSize: 22 }}>🔒</Text>
           <Text style={[styles.emptyMyRecipesText, { marginTop: 6 }]}>
-            Browsing what the community is sharing is a Premium feature — tap to subscribe.
+            {t('home.trendingPremium')}
           </Text>
         </Pressable>
       ) : trendingCards.length > 0 ? (
@@ -204,7 +206,7 @@ export function HomeScreen() {
         </ScrollView>
       ) : (
         <View style={[styles.emptyMyRecipes, shadow.card]}>
-          <Text style={styles.emptyMyRecipesText}>Nothing trending yet — be the first to share a recipe and it'll show up here.</Text>
+          <Text style={styles.emptyMyRecipesText}>{t('home.nothingTrending')}</Text>
         </View>
       )}
     </Screen>

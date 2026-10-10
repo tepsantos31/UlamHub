@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../../navigation/types';
 import { colors, fonts, radii } from '../../theme/theme';
@@ -9,33 +10,19 @@ import { PillButton } from '../../components/PillButton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OnboardingCarousel'>;
 
-const SLIDES = [
-  {
-    title: 'Bring every recipe home',
-    body: "Import from Instagram, TikTok, YouTube, or a photo of grandma's handwritten notes — AI turns it into a clean recipe card.",
-    photo: require('../../../assets/dishes/adobo.jpg'),
-  },
-  {
-    title: 'Cook cuisines from around the world',
-    body: 'Filipino, Italian, American, Mexican and more — with local names and ingredient glossaries.',
-    photo: require('../../../assets/dishes/sinigang.jpg'),
-  },
-  {
-    title: 'Let AI plan your week',
-    body: 'Meal plans that respect your budget, pantry, and dietary needs — down to the grocery list.',
-    photo: require('../../../assets/dishes/pinakbet.jpg'),
-  },
-  {
-    title: 'Share your favorite recipes',
-    body: 'Send any recipe with a link — friends and family can save it straight to their own cookbook, no account needed to view it.',
-    photo: require('../../../assets/dishes/bicol.jpg'),
-  },
+const SLIDE_PHOTOS = [
+  require('../../../assets/dishes/adobo.jpg'),
+  require('../../../assets/dishes/sinigang.jpg'),
+  require('../../../assets/dishes/pinakbet.jpg'),
+  require('../../../assets/dishes/bicol.jpg'),
 ];
 
 export function CarouselScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [slide, setSlide] = useState(0);
   const insets = useSafeAreaInsets();
-  const isLast = slide === SLIDES.length - 1;
+  const slides = t('onboardingCarousel.slides', { returnObjects: true }) as { title: string; body: string }[];
+  const isLast = slide === slides.length - 1;
 
   const next = () => {
     if (isLast) navigation.navigate('OnboardingAuth');
@@ -45,21 +32,21 @@ export function CarouselScreen({ navigation }: Props) {
   return (
     <View style={{ flex: 1, backgroundColor: colors.screenBg }}>
       <View style={styles.imageArea}>
-        <PlaceholderImage source={SLIDES[slide].photo} style={{ flex: 1 }} />
+        <PlaceholderImage source={SLIDE_PHOTOS[slide]} style={{ flex: 1 }} />
         <Pressable style={[styles.skip, { top: insets.top + 16 }]} onPress={() => navigation.navigate('OnboardingAuth')}>
-          <Text style={styles.skipText}>Skip</Text>
+          <Text style={styles.skipText}>{t('onboardingCarousel.skip')}</Text>
         </Pressable>
       </View>
       <View style={styles.bottom}>
         <View style={styles.dots}>
-          {SLIDES.map((_, i) => (
+          {slides.map((_, i) => (
             <View key={i} style={[styles.dot, { width: i === slide ? 22 : 7, backgroundColor: i === slide ? colors.tealDark : 'rgba(35,51,28,0.15)' }]} />
           ))}
         </View>
-        <Text style={styles.title}>{SLIDES[slide].title}</Text>
-        <Text style={styles.body}>{SLIDES[slide].body}</Text>
+        <Text style={styles.title}>{slides[slide].title}</Text>
+        <Text style={styles.body}>{slides[slide].body}</Text>
         <View style={{ flex: 1 }} />
-        <PillButton label={isLast ? 'Get started' : 'Next'} onPress={next} style={{ width: '100%' }} />
+        <PillButton label={isLast ? t('onboardingCarousel.getStarted') : t('onboardingCarousel.next')} onPress={next} style={{ width: '100%' }} />
       </View>
     </View>
   );

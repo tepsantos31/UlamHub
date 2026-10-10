@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, Alert, Image, Share, StyleSheet } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Linking from 'expo-linking';
+import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -20,16 +21,18 @@ import { canAccessRecipe, isSubscriptionActive } from '../utils/subscription';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'RecipeDetail'>;
 
-const AI_ACTIONS = ['Substitute an ingredient', 'Make this vegan', 'Double the recipe', 'Air fryer version', 'Budget version'];
-
-function formatSeconds(sec: number): string {
-  if (sec < 60) return `${sec}s`;
-  const mins = Math.round(sec / 60);
-  return `${mins} min`;
-}
+const AI_ACTION_KEYS = ['substituteIngredient', 'makeVegan', 'doubleRecipe', 'airFryerVersion', 'budgetVersion'];
 
 export function RecipeDetailScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { recipeId } = route.params;
+
+  function formatSeconds(sec: number): string {
+    if (sec < 60) return t('recipeDetail.seconds', { count: sec });
+    const mins = Math.round(sec / 60);
+    return t('recipeDetail.minutes', { count: mins });
+  }
+
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [servings, setServings] = useState(4);
   const [unit, setUnit] = useState<'metric' | 'imperial'>('metric');
@@ -98,15 +101,15 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
   /** Shows the upsell and returns false if this account isn't subscribed. */
   const requirePremium = (message: string): boolean => {
     if (isSubscriptionActive(settings)) return true;
-    Alert.alert('Premium feature', message, [
-      { text: 'Not now', style: 'cancel' },
-      { text: 'Go Premium', onPress: () => navigation.navigate('Paywall') },
+    Alert.alert(t('recipeDetail.alerts.premiumFeatureTitle'), message, [
+      { text: t('recipeDetail.alerts.notNow'), style: 'cancel' },
+      { text: t('recipeDetail.alerts.goPremium'), onPress: () => navigation.navigate('Paywall') },
     ]);
     return false;
   };
 
   const shareRecipe = async () => {
-    if (!requirePremium('Sharing recipes is available to UlamHub Premium members. Subscribe to share this recipe with anyone.')) return;
+    if (!requirePremium(t('recipeDetail.alerts.sharePremiumBody'))) return;
     setSharing(true);
     try {
       const rowId = await shareRecipeRemote(recipe);
@@ -116,12 +119,12 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
         await saveRecipe(next);
         const url = Linking.createURL(`recipe/${rowId}`);
         await Share.share({
-          message: `${recipe.name} (${recipe.country} · ${recipe.type}) — open it in UlamHub: ${url}`,
+          message: t('recipeDetail.shareMessageWithLink', { name: recipe.name, country: recipe.country, type: recipe.type, url }),
           url, // iOS uses this field directly when present
         });
       } else {
         // Not signed in (or Supabase isn't configured) — no cloud copy to link to yet.
-        await Share.share({ message: `${recipe.name} (${recipe.country} · ${recipe.type}) — check it out on UlamHub!` });
+        await Share.share({ message: t('recipeDetail.shareMessageNoLink', { name: recipe.name, country: recipe.country, type: recipe.type }) });
       }
     } finally {
       setSharing(false);
@@ -129,10 +132,10 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
   };
 
   const onDelete = () => {
-    Alert.alert('Delete recipe', `Permanently delete "${recipe.name}"? This can't be undone.`, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('recipeDetail.alerts.deleteTitle'), t('recipeDetail.alerts.deleteBody', { name: recipe.name }), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           await deleteRecipe(recipe.id);
@@ -144,10 +147,10 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
 
   const revokeShare = () => {
     if (!recipe.sharedRowId) return;
-    Alert.alert('Stop sharing?', 'The link you already sent out will stop working.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('recipeDetail.alerts.stopSharingTitle'), t('recipeDetail.alerts.stopSharingBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Stop sharing',
+        text: t('recipeDetail.alerts.stopSharing'),
         style: 'destructive',
         onPress: async () => {
           await unshareRecipeRemote(recipe.sharedRowId!);
@@ -162,7 +165,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
   const pickPhoto = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Permission needed', 'Photo library access is required to add a photo.');
+      Alert.alert(t('recipeDetail.alerts.permissionNeededTitle'), t('recipeDetail.alerts.permissionNeededBody'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7, allowsEditing: true, aspect: [4, 3] });
@@ -173,7 +176,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
   };
 
   const generatePhoto = async () => {
-    if (!requirePremium('Generating a photo with AI is available to UlamHub Premium members.')) return;
+    if (!requirePremium(t('recipeDetail.alerts.generatePhotoPremiumBody'))) return;
     setGeneratingPhoto(true);
     try {
       const { imageBase64 } = await generateRecipePhoto({
@@ -186,24 +189,24 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
       setRecipe(next);
       await saveRecipe(next);
     } catch (e: any) {
-      Alert.alert('Could not generate photo', e?.message ?? 'Something went wrong — please try again.');
+      Alert.alert(t('recipeDetail.alerts.generatePhotoFailedTitle'), e?.message ?? t('common.error'));
     } finally {
       setGeneratingPhoto(false);
     }
   };
 
   const changePhoto = () => {
-    Alert.alert('Recipe photo', undefined, [
-      { text: 'Choose from library', onPress: pickPhoto },
-      { text: 'Generate with AI', onPress: generatePhoto },
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('recipeDetail.alerts.recipePhotoTitle'), undefined, [
+      { text: t('recipeDetail.alerts.chooseFromLibrary'), onPress: pickPhoto },
+      { text: t('recipeDetail.alerts.generateWithAI'), onPress: generatePhoto },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 
   const addMadeItPhoto = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Permission needed', 'Photo library access is required to add a photo.');
+      Alert.alert(t('recipeDetail.alerts.permissionNeededTitle'), t('recipeDetail.alerts.permissionNeededBody'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
@@ -225,7 +228,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
     // mind) rather than saving an empty ingredient.
     const cleaned = editIngredients.filter((i) => i.name.trim());
     if (cleaned.length === 0) {
-      Alert.alert('Missing info', 'Keep at least one ingredient.');
+      Alert.alert(t('recipeDetail.alerts.missingInfoTitle'), t('recipeDetail.alerts.keepOneIngredient'));
       return;
     }
     const next = { ...recipe, ingredients: cleaned };
@@ -247,7 +250,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
     // removing one from the middle doesn't leave a gap (step 1, 2, 4...).
     const cleaned = editSteps.filter((s) => s.text.trim()).map((s, idx) => ({ ...s, n: idx + 1 }));
     if (cleaned.length === 0) {
-      Alert.alert('Missing info', 'Keep at least one step.');
+      Alert.alert(t('recipeDetail.alerts.missingInfoTitle'), t('recipeDetail.alerts.keepOneStep'));
       return;
     }
     const next = { ...recipe, steps: cleaned };
@@ -271,7 +274,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
     // list — unchecking one marks it as already in your pantry.
     const toAdd = { ...recipe, ingredients: recipe.ingredients.filter((i) => toBuyFlags[i.name]) };
     if (toAdd.ingredients.length === 0) {
-      Alert.alert('Nothing to add', "Check the ingredients you still need to buy, then try again.");
+      Alert.alert(t('recipeDetail.alerts.nothingToAddTitle'), t('recipeDetail.alerts.nothingToAddBody'));
       return;
     }
     await addMissingIngredientsToGrocery(toAdd);
@@ -284,7 +287,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
       setFlavorTip(null);
       return;
     }
-    if (!requirePremium('Kitchen AI flavor tips are available to UlamHub Premium members.')) return;
+    if (!requirePremium(t('recipeDetail.alerts.flavorTipPremiumBody'))) return;
     setFlavorLoading(true);
     try {
       const flavorSummary = recipe.flavorBalance.map((a) => `${a.label}: ${a.val}/100`).join(', ');
@@ -293,7 +296,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
       });
       setFlavorTip(res.reply);
     } catch (e) {
-      setFlavorTip("Couldn't reach Kitchen AI — make sure the backend server is running.");
+      setFlavorTip(t('recipeDetail.alerts.kitchenAIUnreachable'));
     } finally {
       setFlavorLoading(false);
     }
@@ -304,7 +307,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
       setStoryOpen(false);
       return;
     }
-    if (!recipe.story && !requirePremium('Recipe Story is available to UlamHub Premium members.')) return;
+    if (!recipe.story && !requirePremium(t('recipeDetail.alerts.storyPremiumBody'))) return;
     setStoryOpen(true);
     // The story is generated once and saved onto the recipe itself (below) —
     // once recipe.story exists, every later open just displays it instead of
@@ -323,7 +326,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
       setRecipe(next);
       await saveRecipe(next);
     } catch (e) {
-      setStoryError("Couldn't reach Kitchen AI — make sure the backend server is running.");
+      setStoryError(t('recipeDetail.alerts.kitchenAIUnreachable'));
     } finally {
       setStoryLoading(false);
     }
@@ -332,8 +335,8 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
   // KitchenAIScreen auto-sends this prefill as soon as it mounts (see its
   // prefill effect) rather than just dropping it unsent into the chat input —
   // otherwise tapping a remix chip looked like it did nothing.
-  const askRemix = (action: string) => {
-    navigation.navigate('KitchenAI', { prefill: `${action}: ${recipe.name}` });
+  const askRemix = (actionKey: string) => {
+    navigation.navigate('KitchenAI', { prefill: `${t(`recipeDetail.aiActions.${actionKey}`)}: ${recipe.name}` });
   };
 
   return (
@@ -377,45 +380,42 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
             <Text style={[styles.badge, { backgroundColor: colors.gold, color: colors.goldText }]}>{recipe.type}</Text>
             {recipe.sharedRowId && (
               <Pressable onPress={revokeShare} style={[styles.badge, { backgroundColor: colors.coralBg }]}>
-                <Text style={{ color: colors.coralSoft, fontSize: 11, fontFamily: fonts.bodyExtraBold }}>🔗 Shared · tap to stop</Text>
+                <Text style={{ color: colors.coralSoft, fontSize: 11, fontFamily: fonts.bodyExtraBold }}>🔗 {t('recipeDetail.sharedTapToStop')}</Text>
               </Pressable>
             )}
           </View>
           <Text style={styles.name}>{recipe.name}</Text>
           <Text style={styles.subline}>
-            ★ {recipe.rating} · {recipe.cooks.toLocaleString()} cooked · by {recipe.author}
+            {t('recipeDetail.subline', { rating: recipe.rating, cooks: recipe.cooks.toLocaleString(), author: recipe.author })}
           </Text>
 
           <View style={styles.statRow}>
             <View style={styles.statTile}>
-              <Text style={styles.statVal}>{recipe.time}m</Text>
-              <Text style={styles.statLabel}>Total time</Text>
+              <Text style={styles.statVal}>{t('recipeDetail.timeMinutes', { count: recipe.time })}</Text>
+              <Text style={styles.statLabel}>{t('recipeDetail.totalTime')}</Text>
             </View>
             <View style={styles.statTile}>
               <Text style={styles.statVal}>{recipe.kcal}</Text>
-              <Text style={styles.statLabel}>kcal / serving</Text>
+              <Text style={styles.statLabel}>{t('recipeDetail.kcalPerServing')}</Text>
             </View>
             <View style={styles.statTile}>
               <Text style={styles.statVal}>{recipe.diff}</Text>
-              <Text style={styles.statLabel}>Level</Text>
+              <Text style={styles.statLabel}>{t('recipeDetail.level')}</Text>
             </View>
           </View>
 
           {locked ? (
             <View style={styles.lockCard}>
               <Text style={{ fontSize: 30 }}>🔒</Text>
-              <Text style={styles.lockTitle}>This recipe is locked</Text>
-              <Text style={styles.lockBody}>
-                Ingredients, steps, and cook mode for recipes you've created, imported, or saved from a share unlock with an
-                active subscription.
-              </Text>
-              <PillButton label="Unlock recipes" onPress={() => navigation.navigate('Paywall')} style={{ marginTop: 16 }} />
+              <Text style={styles.lockTitle}>{t('recipeDetail.lockedTitle')}</Text>
+              <Text style={styles.lockBody}>{t('recipeDetail.lockedBody')}</Text>
+              <PillButton label={t('recipeDetail.unlockRecipes')} onPress={() => navigation.navigate('Paywall')} style={{ marginTop: 16 }} />
             </View>
           ) : (
             <>
           <View style={styles.servingsRow}>
             <View style={styles.servingsControl}>
-              <Text style={styles.servingsLabel}>Servings</Text>
+              <Text style={styles.servingsLabel}>{t('recipeDetail.servings')}</Text>
               <View style={styles.stepper}>
                 <Pressable onPress={() => setServings((s) => Math.max(1, s - 1))} style={styles.stepperBtn}>
                   <Text style={styles.stepperBtnText}>–</Text>
@@ -428,19 +428,19 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
             </View>
             <View style={styles.unitToggle}>
               <Pressable onPress={() => setUnit('metric')} style={[styles.unitBtn, unit === 'metric' && styles.unitBtnActive]}>
-                <Text style={[styles.unitBtnText, unit === 'metric' && styles.unitBtnTextActive]}>Metric</Text>
+                <Text style={[styles.unitBtnText, unit === 'metric' && styles.unitBtnTextActive]}>{t('profile.metric')}</Text>
               </Pressable>
               <Pressable onPress={() => setUnit('imperial')} style={[styles.unitBtn, unit === 'imperial' && styles.unitBtnActive]}>
-                <Text style={[styles.unitBtnText, unit === 'imperial' && styles.unitBtnTextActive]}>US</Text>
+                <Text style={[styles.unitBtnText, unit === 'imperial' && styles.unitBtnTextActive]}>{t('profile.us')}</Text>
               </Pressable>
             </View>
           </View>
 
           <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.h2, { marginTop: 0, marginBottom: 0 }]}>Ingredients</Text>
+            <Text style={[styles.h2, { marginTop: 0, marginBottom: 0 }]}>{t('recipeDetail.ingredients')}</Text>
             {recipe.userAdded && !editingIngredients && (
               <Pressable onPress={startEditIngredients}>
-                <Text style={styles.editLink}>Edit</Text>
+                <Text style={styles.editLink}>{t('common.edit')}</Text>
               </Pressable>
             )}
           </View>
@@ -451,14 +451,14 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
                   <TextInput
                     value={ing.name}
                     onChangeText={(v) => updateEditIngredient(i, { name: v })}
-                    placeholder="Ingredient"
+                    placeholder={t('recipeDetail.ingredientPlaceholder')}
                     placeholderTextColor={colors.tertiaryText}
                     style={[styles.editInput, { flex: 2 }]}
                   />
                   <TextInput
                     value={String(ing.qty)}
                     onChangeText={(v) => updateEditIngredient(i, { qty: parseFloat(v) || 0 })}
-                    placeholder="Qty"
+                    placeholder={t('recipeDetail.qtyPlaceholder')}
                     keyboardType="numeric"
                     placeholderTextColor={colors.tertiaryText}
                     style={[styles.editInput, { flex: 0.7 }]}
@@ -466,7 +466,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
                   <TextInput
                     value={ing.unit}
                     onChangeText={(v) => updateEditIngredient(i, { unit: v })}
-                    placeholder="unit"
+                    placeholder={t('recipeDetail.unitPlaceholder')}
                     placeholderTextColor={colors.tertiaryText}
                     style={[styles.editInput, { flex: 0.8 }]}
                   />
@@ -477,11 +477,11 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
               ))}
               <Pressable onPress={addEditIngredient} style={styles.addMissingRow}>
                 <Text style={styles.addMissingPlus}>＋</Text>
-                <Text style={styles.addMissingText}>Add ingredient</Text>
+                <Text style={styles.addMissingText}>{t('recipeDetail.addIngredient')}</Text>
               </Pressable>
               <View style={styles.editActionsRow}>
-                <PillButton label="Cancel" onPress={cancelEditIngredients} variant="secondary" style={{ flex: 1 }} />
-                <PillButton label="Save changes" onPress={saveEditIngredients} style={{ flex: 1 }} />
+                <PillButton label={t('common.cancel')} onPress={cancelEditIngredients} variant="secondary" style={{ flex: 1 }} />
+                <PillButton label={t('recipeDetail.saveChanges')} onPress={saveEditIngredients} style={{ flex: 1 }} />
               </View>
             </View>
           ) : (
@@ -507,13 +507,13 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
               })}
               <Pressable onPress={addMissing} style={styles.addMissingRow}>
                 <Text style={styles.addMissingPlus}>＋</Text>
-                <Text style={styles.addMissingText}>{addedToast ? 'Added to grocery list ✓' : 'Add to grocery list'}</Text>
+                <Text style={styles.addMissingText}>{addedToast ? t('recipeDetail.addedToGroceryList') : t('recipeDetail.addToGroceryList')}</Text>
               </Pressable>
             </View>
           )}
 
-          <Text style={[styles.h2, { marginBottom: 4 }]}>Sauce pairing</Text>
-          <Text style={styles.h2Sub}>Dips and sauces that bring out the dish</Text>
+          <Text style={[styles.h2, { marginBottom: 4 }]}>{t('recipeDetail.saucePairing')}</Text>
+          <Text style={styles.h2Sub}>{t('recipeDetail.saucePairingSub')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 11, paddingBottom: 4 }}>
             {recipe.saucePairings.map((d) => (
               <View key={d.name} style={styles.saucePairingCard}>
@@ -531,8 +531,8 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
               <View style={styles.storyIcon}>
                 <Text style={{ fontSize: 16 }}>📖</Text>
               </View>
-              <Text style={styles.storyTitle}>Recipe Story</Text>
-              <Text style={styles.storyToggle}>{storyOpen ? 'Hide' : 'Read the story ✨'}</Text>
+              <Text style={styles.storyTitle}>{t('recipeDetail.recipeStory')}</Text>
+              <Text style={styles.storyToggle}>{storyOpen ? t('recipeDetail.hide') : t('recipeDetail.readTheStory')}</Text>
             </View>
             {storyOpen && (
               <View style={{ marginTop: 12 }}>
@@ -547,9 +547,9 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
 
           <View style={styles.flavorCard}>
             <View style={styles.flavorHeaderRow}>
-              <Text style={styles.flavorTitle}>Flavor balance</Text>
+              <Text style={styles.flavorTitle}>{t('recipeDetail.flavorBalance')}</Text>
               <Pressable onPress={requestFlavorTip} disabled={flavorLoading}>
-                <Text style={styles.flavorAdjust}>{flavorLoading ? 'Thinking…' : 'Adjust ✨'}</Text>
+                <Text style={styles.flavorAdjust}>{flavorLoading ? t('recipeDetail.thinking') : t('recipeDetail.adjust')}</Text>
               </Pressable>
             </View>
             <View style={{ gap: 11, marginTop: 14 }}>
@@ -566,10 +566,10 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
           </View>
 
           <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.h2, { marginTop: 0, marginBottom: 0 }]}>Steps</Text>
+            <Text style={[styles.h2, { marginTop: 0, marginBottom: 0 }]}>{t('recipeDetail.steps')}</Text>
             {recipe.userAdded && !editingSteps && (
               <Pressable onPress={startEditSteps}>
-                <Text style={styles.editLink}>Edit</Text>
+                <Text style={styles.editLink}>{t('common.edit')}</Text>
               </Pressable>
             )}
           </View>
@@ -583,7 +583,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
                   <TextInput
                     value={st.text}
                     onChangeText={(v) => updateEditStep(i, v)}
-                    placeholder="Describe this step…"
+                    placeholder={t('recipeDetail.describeStepPlaceholder')}
                     placeholderTextColor={colors.tertiaryText}
                     multiline
                     style={[styles.editInput, { flex: 1, minHeight: 44 }]}
@@ -594,12 +594,12 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
                 </View>
               ))}
               <Pressable onPress={addEditStep}>
-                <Text style={styles.addMissingText}>＋ Add step</Text>
+                <Text style={styles.addMissingText}>＋ {t('recipeDetail.addStep')}</Text>
               </Pressable>
 
               <View style={styles.editActionsRow}>
-                <PillButton label="Cancel" onPress={cancelEditSteps} variant="secondary" style={{ flex: 1 }} />
-                <PillButton label="Save changes" onPress={saveEditSteps} style={{ flex: 1 }} />
+                <PillButton label={t('common.cancel')} onPress={cancelEditSteps} variant="secondary" style={{ flex: 1 }} />
+                <PillButton label={t('recipeDetail.saveChanges')} onPress={saveEditSteps} style={{ flex: 1 }} />
               </View>
             </View>
           ) : (
@@ -622,13 +622,13 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
             </View>
           )}
 
-          <Text style={styles.h2}>Nutrition · per serving</Text>
+          <Text style={styles.h2}>{t('recipeDetail.nutritionPerServing')}</Text>
           <View style={styles.nutritionRow}>
             {[
-              { label: 'Protein', val: `${recipe.nutrition.protein}g` },
-              { label: 'Carbs', val: `${recipe.nutrition.carbs}g` },
-              { label: 'Fat', val: `${recipe.nutrition.fat}g` },
-              { label: 'Sodium', val: `${recipe.nutrition.sodium}mg` },
+              { label: t('recipeDetail.protein'), val: `${recipe.nutrition.protein}g` },
+              { label: t('recipeDetail.carbs'), val: `${recipe.nutrition.carbs}g` },
+              { label: t('recipeDetail.fat'), val: `${recipe.nutrition.fat}g` },
+              { label: t('recipeDetail.sodium'), val: `${recipe.nutrition.sodium}mg` },
             ].map((m) => (
               <View key={m.label} style={styles.nutritionTile}>
                 <Text style={styles.nutritionVal}>{m.val}</Text>
@@ -637,22 +637,25 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
             ))}
           </View>
 
-          <Text style={styles.h2}>Ask AI to remix</Text>
+          <Text style={styles.h2}>{t('recipeDetail.askAIToRemix')}</Text>
           <View style={styles.remixRow}>
-            {AI_ACTIONS.map((a) => (
-              <Pressable key={a} onPress={() => askRemix(a)} style={styles.remixChip}>
-                <Text style={styles.remixChipText}>✨ {a}</Text>
+            {AI_ACTION_KEYS.map((key) => (
+              <Pressable key={key} onPress={() => askRemix(key)} style={styles.remixChip}>
+                <Text style={styles.remixChipText}>✨ {t(`recipeDetail.aiActions.${key}`)}</Text>
               </Pressable>
             ))}
           </View>
 
-          <Text style={styles.h2}>Made it{recipe.madeItPhotos?.length ? ` (${recipe.madeItPhotos.length})` : ''}</Text>
+          <Text style={styles.h2}>
+            {t('recipeDetail.madeIt')}
+            {recipe.madeItPhotos?.length ? ` (${recipe.madeItPhotos.length})` : ''}
+          </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
             {(recipe.madeItPhotos ?? []).map((uri) => (
               <Image key={uri} source={{ uri }} style={styles.madeItPlaceholder} />
             ))}
             <Pressable onPress={addMadeItPhoto} style={styles.madeItAdd}>
-              <Text style={styles.madeItAddText}>＋{'\n'}Add yours</Text>
+              <Text style={styles.madeItAddText}>＋{'\n'}{t('recipeDetail.addYours')}</Text>
             </Pressable>
           </ScrollView>
             </>
@@ -660,7 +663,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
 
           {recipe.userAdded && (
             <Text style={styles.deleteLink} onPress={onDelete}>
-              Delete recipe
+              {t('recipeDetail.deleteRecipe')}
             </Text>
           )}
         </View>
@@ -668,13 +671,13 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
 
       <View style={styles.stickyBar}>
         {locked ? (
-          <PillButton label="🔒 Unlock to cook this recipe" onPress={() => navigation.navigate('Paywall')} style={{ flex: 1 }} />
+          <PillButton label={`🔒 ${t('recipeDetail.unlockToCook')}`} onPress={() => navigation.navigate('Paywall')} style={{ flex: 1 }} />
         ) : (
           <>
             <Pressable onPress={toggleFavorite} style={[styles.saveBtn, shadow.soft]}>
               <BookmarkIcon color={recipe.favorite ? colors.tealLink : colors.ink} />
             </Pressable>
-            <PillButton label="🍳 Start cooking" onPress={() => navigation.navigate('CookMode', { recipeId })} style={{ flex: 1 }} />
+            <PillButton label={`🍳 ${t('recipeDetail.startCooking')}`} onPress={() => navigation.navigate('CookMode', { recipeId })} style={{ flex: 1 }} />
             {recipe.sourceUrl && (
               // A chain-link glyph didn't say what tapping it does — most
               // sources are an Instagram/TikTok/YouTube video, so a play

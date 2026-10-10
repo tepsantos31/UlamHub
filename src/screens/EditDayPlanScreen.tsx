@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, Pressable, Modal, FlatList, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -13,6 +14,7 @@ import { listRecipes } from '../storage/recipes';
 type Props = NativeStackScreenProps<RootStackParamList, 'EditDayPlan'>;
 
 export function EditDayPlanScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { dayIndex } = route.params;
   const [day, setDay] = useState<PlanDay | null>(null);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -35,7 +37,7 @@ export function EditDayPlanScreen({ route, navigation }: Props) {
   );
 
   const byId = new Map(recipes.map((r) => [r.id, r]));
-  const labelFor = (val: string | null) => (val ? byId.get(val)?.name ?? val : 'Not set');
+  const labelFor = (val: string | null) => (val ? byId.get(val)?.name ?? val : t('editDayPlan.notSet'));
 
   const pickerOpen = editingIndex !== null || addingNew;
 
@@ -63,8 +65,8 @@ export function EditDayPlanScreen({ route, navigation }: Props) {
 
   return (
     <Screen withTabBarSpace={false} scroll={false}>
-      <HeaderBar title={`Edit ${day.day}`} onBack={() => navigation.goBack()} />
-      <Text style={styles.subtitle}>Select or replace a dish, or add another one for the day.</Text>
+      <HeaderBar title={t('editDayPlan.editDay', { day: day.day })} onBack={() => navigation.goBack()} />
+      <Text style={styles.subtitle}>{t('editDayPlan.subtitle')}</Text>
 
       <View style={{ gap: 10, marginTop: 16 }}>
         {day.dishes.map((val, idx) => (
@@ -76,17 +78,17 @@ export function EditDayPlanScreen({ route, navigation }: Props) {
           </Pressable>
         ))}
         <Pressable onPress={() => setAddingNew(true)} style={styles.addDishBtn}>
-          <Text style={styles.addDishText}>＋ Add a dish</Text>
+          <Text style={styles.addDishText}>＋ {t('editDayPlan.addADish')}</Text>
         </Pressable>
       </View>
 
       <Modal visible={pickerOpen} animationType="slide" transparent onRequestClose={closePicker}>
         <Pressable style={styles.modalScrim} onPress={closePicker} />
         <View style={styles.modalSheet}>
-          <Text style={styles.modalTitle}>Choose a recipe</Text>
+          <Text style={styles.modalTitle}>{t('editDayPlan.chooseARecipe')}</Text>
           {editingIndex !== null && currentValue && (
             <Pressable onPress={clearDish} style={styles.clearRow}>
-              <Text style={styles.clearRowText}>✕ Clear this dish</Text>
+              <Text style={styles.clearRowText}>✕ {t('editDayPlan.clearThisDish')}</Text>
             </Pressable>
           )}
           <FlatList
@@ -96,7 +98,7 @@ export function EditDayPlanScreen({ route, navigation }: Props) {
             renderItem={({ item }) => (
               <Pressable onPress={() => pickRecipe(item.id)} style={styles.modalRow}>
                 <Text style={[styles.modalRowName, item.id === currentValue && styles.modalRowNameActive]}>{item.name}</Text>
-                <Text style={styles.modalRowMeta}>{item.id === currentValue ? '✓ Selected' : item.country}</Text>
+                <Text style={styles.modalRowMeta}>{item.id === currentValue ? `✓ ${t('editDayPlan.selected')}` : item.country}</Text>
               </Pressable>
             )}
           />

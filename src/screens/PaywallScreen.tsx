@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, Pressable, Alert, ActivityIndicator, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -14,24 +15,31 @@ import { purchasesConfigured, getCurrentOffering, purchase, restore, describeFre
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Paywall'>;
 
-const FEATURES = [
-  { f: 'Your own recipes', free: 'Up to 10', prem: 'Unlimited' },
-  { f: 'Import from link & photo', free: '✓', prem: '✓' },
-  { f: 'Kitchen AI & AI tools', free: '—', prem: '✓' },
-  { f: 'Recipe Story & flavor tips', free: '—', prem: '✓' },
-  { f: 'Share recipes', free: '—', prem: '✓' },
-  { f: 'Browse community trending', free: '—', prem: '✓' },
-];
-
-// Shown only while unconfigured (no RevenueCat keys yet) so the paywall still
-// has something to display in local/demo mode.
-const DEMO_PLANS: { key: 'monthly' | 'annual'; name: string; price: string; per: string; note?: string }[] = [
-  { key: 'monthly', name: 'Monthly', price: '$4.99', per: '/mo' },
-  { key: 'annual', name: 'Annual', price: '$39.99', per: '/yr', note: 'Save 33%' },
+const FEATURE_KEYS = [
+  'ownRecipes',
+  'importFromLinkPhoto',
+  'kitchenAIAndTools',
+  'recipeStoryFlavorTips',
+  'shareRecipes',
+  'browseTrending',
 ];
 
 export function PaywallScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+
+  const FEATURES = FEATURE_KEYS.map((key) => ({
+    f: t(`paywall.features.${key}.name`),
+    free: t(`paywall.features.${key}.free`),
+    prem: t(`paywall.features.${key}.prem`),
+  }));
+
+  // Shown only while unconfigured (no RevenueCat keys yet) so the paywall
+  // still has something to display in local/demo mode.
+  const DEMO_PLANS: { key: 'monthly' | 'annual'; name: string; price: string; per: string; note?: string }[] = [
+    { key: 'monthly', name: t('paywall.monthly'), price: '$4.99', per: t('paywall.perMonth') },
+    { key: 'annual', name: t('paywall.annual'), price: '$39.99', per: t('paywall.perYear'), note: t('paywall.save33') },
+  ];
   const [pick, setPick] = useState<'monthly' | 'annual'>('annual');
   const [packages, setPackages] = useState<PurchasesPackage[] | null>(null);
   const [busy, setBusy] = useState<'subscribe' | 'restore' | null>(null);
@@ -48,7 +56,7 @@ export function PaywallScreen({ navigation }: Props) {
         .filter((p) => p.packageType === PACKAGE_TYPE.MONTHLY || p.packageType === PACKAGE_TYPE.ANNUAL)
         .map((p) => ({
           key: (p.packageType === PACKAGE_TYPE.ANNUAL ? 'annual' : 'monthly') as 'monthly' | 'annual',
-          name: p.packageType === PACKAGE_TYPE.ANNUAL ? 'Annual' : 'Monthly',
+          name: p.packageType === PACKAGE_TYPE.ANNUAL ? t('paywall.annual') : t('paywall.monthly'),
           price: p.product.priceString,
           per: p.packageType === PACKAGE_TYPE.ANNUAL ? '/yr' : '/mo',
           pkg: p,
@@ -67,17 +75,15 @@ export function PaywallScreen({ navigation }: Props) {
     // Resubscribing always starts a fresh full period from today, whether
     // the old one had already lapsed or not — same as a real renewal would.
     await setSettings({ ...settings, plan: pick, planExpiresAt: computeExpiryDate(pick), planCancelled: false });
-    Alert.alert(
-      'Demo only',
-      'This is a local mock — no real purchase happened (RevenueCat isn’t configured on this build yet). Your plan is saved locally though, including a real expiry date: created/shared/imported recipes lock again once that date passes, unless you resubscribe.',
-      [{ text: 'OK', onPress: () => navigation.goBack() }],
-    );
+    Alert.alert(t('paywall.alerts.demoOnlyTitle'), t('paywall.alerts.demoOnlyBody'), [
+      { text: t('common.ok'), onPress: () => navigation.goBack() },
+    ]);
   };
 
   const subscribe = async () => {
     if (!purchasesConfigured) return subscribeDemo();
     if (!selectedPackage) {
-      Alert.alert('Not available', 'This plan isn’t available right now — please try again shortly.');
+      Alert.alert(t('paywall.alerts.notAvailableTitle'), t('paywall.alerts.planNotAvailableBody'));
       return;
     }
     setBusy('subscribe');
@@ -85,7 +91,7 @@ export function PaywallScreen({ navigation }: Props) {
       await purchase(selectedPackage);
       navigation.goBack();
     } catch (e: any) {
-      if (!e?.userCancelled) Alert.alert('Purchase failed', e?.message ?? 'Something went wrong — please try again.');
+      if (!e?.userCancelled) Alert.alert(t('paywall.alerts.purchaseFailedTitle'), e?.message ?? t('common.error'));
     } finally {
       setBusy(null);
     }
@@ -93,15 +99,15 @@ export function PaywallScreen({ navigation }: Props) {
 
   const restorePurchase = async () => {
     if (!purchasesConfigured) {
-      Alert.alert('Not available', 'Restoring purchases isn’t available in this build yet.');
+      Alert.alert(t('paywall.alerts.notAvailableTitle'), t('paywall.alerts.restoreNotAvailableBody'));
       return;
     }
     setBusy('restore');
     try {
       await restore();
-      Alert.alert('Restored', 'Your purchases have been restored.', [{ text: 'OK', onPress: () => navigation.goBack() }]);
+      Alert.alert(t('paywall.alerts.restoredTitle'), t('paywall.alerts.restoredBody'), [{ text: t('common.ok'), onPress: () => navigation.goBack() }]);
     } catch (e: any) {
-      Alert.alert('Could not restore', e?.message ?? 'Something went wrong — please try again.');
+      Alert.alert(t('paywall.alerts.couldNotRestoreTitle'), e?.message ?? t('common.error'));
     } finally {
       setBusy(null);
     }
@@ -118,15 +124,15 @@ export function PaywallScreen({ navigation }: Props) {
         <View style={styles.logo}>
           <Text style={{ fontSize: 28 }}>✨</Text>
         </View>
-        <Text style={styles.title}>UlamHub Premium</Text>
-        <Text style={styles.subtitle}>Cook without limits — every cuisine, every tool</Text>
+        <Text style={styles.title}>{t('paywall.ulamhubPremium')}</Text>
+        <Text style={styles.subtitle}>{t('paywall.subtitle')}</Text>
       </View>
 
       <View style={styles.table}>
         <View style={styles.tableHeader}>
-          <Text style={[styles.tableHeaderText, { flex: 1 }]}>FEATURE</Text>
-          <Text style={[styles.tableHeaderText, { width: 66, textAlign: 'center' }]}>FREE</Text>
-          <Text style={[styles.tableHeaderText, { width: 76, textAlign: 'center', color: colors.tealLink }]}>PREMIUM</Text>
+          <Text style={[styles.tableHeaderText, { flex: 1 }]}>{t('paywall.feature')}</Text>
+          <Text style={[styles.tableHeaderText, { width: 66, textAlign: 'center' }]}>{t('paywall.free')}</Text>
+          <Text style={[styles.tableHeaderText, { width: 76, textAlign: 'center', color: colors.tealLink }]}>{t('paywall.premium')}</Text>
         </View>
         {FEATURES.map((row) => (
           <View key={row.f} style={styles.tableRow}>
@@ -160,21 +166,21 @@ export function PaywallScreen({ navigation }: Props) {
       )}
 
       <PillButton
-        label={trialLength ? `Start ${trialLength} free trial` : 'Subscribe'}
+        label={trialLength ? t('paywall.startFreeTrial', { length: trialLength }) : t('paywall.subscribe')}
         onPress={subscribe}
         loading={busy === 'subscribe'}
         disabled={busy !== null || (purchasesConfigured && plans.length === 0)}
         style={{ marginTop: 22 }}
       />
       <Text style={styles.legal}>
-        Cancel anytime ·{' '}
+        {t('paywall.cancelAnytime')} ·{' '}
         <Text style={{ color: colors.tealLink, fontFamily: fonts.bodyBold }} onPress={busy ? undefined : restorePurchase}>
-          {busy === 'restore' ? 'Restoring…' : 'Restore purchase'}
+          {busy === 'restore' ? t('paywall.restoring') : t('paywall.restorePurchase')}
         </Text>
         {'\n'}
-        <Text onPress={() => navigation.navigate('Legal', { doc: 'terms' })}>Terms</Text>
+        <Text onPress={() => navigation.navigate('Legal', { doc: 'terms' })}>{t('paywall.terms')}</Text>
         {'  ·  '}
-        <Text onPress={() => navigation.navigate('Legal', { doc: 'privacy' })}>Privacy</Text>
+        <Text onPress={() => navigation.navigate('Legal', { doc: 'privacy' })}>{t('paywall.privacy')}</Text>
       </Text>
     </View>
   );

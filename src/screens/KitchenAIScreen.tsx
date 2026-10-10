@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../navigation/types';
@@ -16,7 +17,7 @@ import { chatMessage } from '../api/client';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'KitchenAI'>;
 
-const QUICK_CHIPS = ['I have chicken & lime', 'Plan my week for $80', 'Make adobo vegan', 'Snack ideas'];
+const QUICK_CHIP_KEYS = ['haveChickenLime', 'planMyWeek', 'makeAdoboVegan', 'snackIdeas'];
 
 // Very simple local matcher — the backend never needs the user's full recipe
 // library, it just replies conversationally; we resolve a recipe-card mention
@@ -27,6 +28,7 @@ function findMentionedRecipe(reply: string, recipes: Recipe[]): Recipe | undefin
 }
 
 export function KitchenAIScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -56,17 +58,17 @@ export function KitchenAIScreen({ route, navigation }: Props) {
   }, [route.params?.prefill, settings, recipes]);
 
   const send = async (text?: string) => {
-    const t = (text ?? draft).trim();
-    if (!t || sending) return;
+    const message = (text ?? draft).trim();
+    if (!message || sending) return;
     setDraft('');
-    const userMsg: ChatMessage = { role: 'user', text: t };
+    const userMsg: ChatMessage = { role: 'user', text: message };
     const afterUser = await appendChat([userMsg]);
     setMessages(afterUser);
     setSending(true);
     try {
       const history = afterUser.slice(-8).map((m) => ({ role: m.role, text: m.text }));
       const res = await chatMessage({
-        message: t,
+        message,
         history,
         context: { recipeNames: recipes.map((r) => r.name) },
       });
@@ -77,7 +79,7 @@ export function KitchenAIScreen({ route, navigation }: Props) {
     } catch (e: any) {
       const errMsg: ChatMessage = {
         role: 'ai',
-        text: `I couldn't reach the Kitchen AI backend. Make sure the server is running and your phone is on the same Wi-Fi. (${e?.message ?? 'unknown error'})`,
+        text: t('kitchenAI.unreachableError', { message: e?.message ?? t('kitchenAI.unknownError') }),
       };
       setMessages(await appendChat([errMsg]));
     } finally {
@@ -88,10 +90,10 @@ export function KitchenAIScreen({ route, navigation }: Props) {
 
   const onClearChat = () => {
     if (messages.length === 0) return;
-    Alert.alert('Clear chat', 'This removes your entire conversation with Kitchen AI.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('kitchenAI.alerts.clearChatTitle'), t('kitchenAI.alerts.clearChatBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Clear',
+        text: t('mealPlanner.clear'),
         style: 'destructive',
         onPress: async () => {
           const next = await clearChat();
@@ -108,11 +110,11 @@ export function KitchenAIScreen({ route, navigation }: Props) {
           <BackChevronIcon />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Kitchen AI</Text>
-          <Text style={styles.headerStatus}>● Ready to help</Text>
+          <Text style={styles.headerTitle}>{t('kitchenAI.title')}</Text>
+          <Text style={styles.headerStatus}>● {t('kitchenAI.readyToHelp')}</Text>
         </View>
         <Pressable onPress={onClearChat} style={styles.clearChatBtn}>
-          <Text style={styles.clearChatText}>Clear chat</Text>
+          <Text style={styles.clearChatText}>{t('kitchenAI.clearChat')}</Text>
         </Pressable>
       </View>
 
@@ -120,8 +122,8 @@ export function KitchenAIScreen({ route, navigation }: Props) {
         <ScrollView contentContainerStyle={styles.messagesWrap}>
           <PremiumGate
             icon="✨"
-            title="Kitchen AI is a Premium tool"
-            body="Chatting with your cooking assistant is a Premium feature — subscribe to UlamHub Premium to unlock it."
+            title={t('kitchenAI.premiumToolTitle')}
+            body={t('kitchenAI.premiumToolBody')}
             onGoPremium={() => navigation.navigate('Paywall')}
           />
         </ScrollView>
@@ -157,9 +159,9 @@ export function KitchenAIScreen({ route, navigation }: Props) {
           </View>
         )}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 4 }}>
-          {QUICK_CHIPS.map((c) => (
-            <Pressable key={c} onPress={() => send(c)} style={styles.chip}>
-              <Text style={styles.chipText}>{c}</Text>
+          {QUICK_CHIP_KEYS.map((key) => (
+            <Pressable key={key} onPress={() => send(t(`kitchenAI.quickChips.${key}`))} style={styles.chip}>
+              <Text style={styles.chipText}>{t(`kitchenAI.quickChips.${key}`)}</Text>
             </Pressable>
           ))}
         </ScrollView>
@@ -171,7 +173,7 @@ export function KitchenAIScreen({ route, navigation }: Props) {
         <TextInput
           value={draft}
           onChangeText={setDraft}
-          placeholder="Ask anything — text or voice…"
+          placeholder={t('kitchenAI.askAnything')}
           placeholderTextColor={colors.tertiaryText}
           style={styles.input}
           onSubmitEditing={() => send()}

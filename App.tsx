@@ -21,6 +21,12 @@ import {
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { AuthProvider } from './src/lib/auth';
 import { RootStackParamList } from './src/navigation/types';
+import { getSettings } from './src/storage/settings';
+// Side-effect import — initializes i18next before anything tries to render
+// translated text. getSettings() (called from AuthProvider's first render
+// path, among others) switches the active language once the saved/detected
+// one is known; until then this sets English as the starting point.
+import './src/lib/i18n';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -80,6 +86,15 @@ export default function App() {
   });
 
   const ready = (fredokaLoaded || !!fredokaError) && (jakartaLoaded || !!jakartaError);
+
+  // Applies the saved (or device-detected, on first launch) language before
+  // the user reaches any real screen — getSettings() itself is what calls
+  // i18n.changeLanguage(). Individual screens also call getSettings() for
+  // their own data, which keeps this in sync if it's ever changed mid-session
+  // (e.g. from Profile), not just once at startup.
+  useEffect(() => {
+    getSettings().catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (ready) SplashScreen.hideAsync().catch(() => {});

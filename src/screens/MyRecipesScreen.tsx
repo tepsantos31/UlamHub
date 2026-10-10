@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -15,6 +16,7 @@ import { canAccessRecipe } from '../utils/subscription';
 type Props = NativeStackScreenProps<RootStackParamList, 'MyRecipes'>;
 
 export function MyRecipesScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [settings, setSettingsState] = useState<SettingsState | null>(null);
 
@@ -33,22 +35,20 @@ export function MyRecipesScreen({ navigation }: Props) {
 
   return (
     <Screen>
-      <HeaderBar title="My Recipes" onBack={() => navigation.goBack()} />
-      <Text style={styles.subline}>Everything you've created, imported, or saved from a share — all in one place.</Text>
+      <HeaderBar title={t('myRecipes.title')} onBack={() => navigation.goBack()} />
+      <Text style={styles.subline}>{t('myRecipes.subline')}</Text>
 
       {recipes.length === 0 ? (
         <View style={styles.emptyBox}>
           <Text style={{ fontSize: 30 }}>📖</Text>
-          <Text style={styles.emptyTitle}>Nothing here yet</Text>
-          <Text style={styles.emptyBody}>
-            Recipes you add, import, or save from a shared link will show up here.
-          </Text>
+          <Text style={styles.emptyTitle}>{t('myRecipes.emptyTitle')}</Text>
+          <Text style={styles.emptyBody}>{t('myRecipes.emptyBody')}</Text>
         </View>
       ) : (
         <>
           {created.length > 0 && (
             <>
-              <Text style={styles.sectionTitle}>Created by you</Text>
+              <Text style={styles.sectionTitle}>{t('myRecipes.createdByYou')}</Text>
               <View style={styles.grid}>
                 {created.map((r) => (
                   <RecipeCard
@@ -66,7 +66,7 @@ export function MyRecipesScreen({ navigation }: Props) {
 
           {shared.length > 0 && (
             <>
-              <Text style={styles.sectionTitle}>Saved from a share</Text>
+              <Text style={styles.sectionTitle}>{t('myRecipes.savedFromShare')}</Text>
               <View style={styles.grid}>
                 {shared.map((r) => (
                   <RecipeCard

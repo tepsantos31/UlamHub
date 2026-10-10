@@ -60,7 +60,8 @@
           "color": "#295B53"
         }
       ],
-      "./plugins/withMinIosDeploymentTarget"
+      "./plugins/withMinIosDeploymentTarget",
+      "expo-localization"
     ],
     "extra": {
       "eas": {

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, Linking, KeyboardAvoidingView, Platform, ActivityIndicator, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../navigation/types';
@@ -13,11 +14,11 @@ import { SUPPORT_PHONE_DISPLAY, SUPPORT_PHONE_TEL } from '../constants/support';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SupportChat'>;
 
-const QUICK_CHIPS = ['My recipes are locked', 'How do I share a recipe?', 'AI features aren\'t working', 'Talk to a real person'];
-const REAL_PERSON_CHIP = 'Talk to a real person';
-const PHONE_REPLY = `You can reach a real person directly:\n\n📞 ${SUPPORT_PHONE_DISPLAY}\n\nTap below to call.`;
+const QUICK_CHIP_KEYS = ['recipesLocked', 'howToShare', 'aiNotWorking', 'talkToRealPerson'];
+const REAL_PERSON_CHIP_KEY = 'talkToRealPerson';
 
 export function SupportChatScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
@@ -29,16 +30,17 @@ export function SupportChatScreen({ navigation }: Props) {
   }, []);
 
   const send = async (text?: string) => {
-    const t = (text ?? draft).trim();
-    if (!t || sending) return;
+    const message = (text ?? draft).trim();
+    if (!message || sending) return;
     setDraft('');
-    const userMsg: ChatMessage = { role: 'user', text: t };
+    const userMsg: ChatMessage = { role: 'user', text: message };
     const afterUser = await appendSupportChat([userMsg]);
     setMessages(afterUser);
 
     // Deterministic path — never let the model invent or mangle the number.
-    if (t === REAL_PERSON_CHIP) {
-      setMessages(await appendSupportChat([{ role: 'ai', text: PHONE_REPLY }]));
+    if (message === t(`supportChat.quickChips.${REAL_PERSON_CHIP_KEY}`)) {
+      const phoneReply = t('supportChat.phoneReply', { phone: SUPPORT_PHONE_DISPLAY });
+      setMessages(await appendSupportChat([{ role: 'ai', text: phoneReply }]));
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
       return;
     }
@@ -46,12 +48,15 @@ export function SupportChatScreen({ navigation }: Props) {
     setSending(true);
     try {
       const history = afterUser.slice(-8).map((m) => ({ role: m.role, text: m.text }));
-      const res = await supportChat({ message: t, history });
+      const res = await supportChat({ message, history });
       setMessages(await appendSupportChat([{ role: 'ai', text: res.reply }]));
     } catch (e: any) {
       setMessages(
         await appendSupportChat([
-          { role: 'ai', text: `I couldn't reach support chat right now. (${e?.message ?? 'unknown error'}) You can also call ${SUPPORT_PHONE_DISPLAY}.` },
+          {
+            role: 'ai',
+            text: t('supportChat.unreachableError', { message: e?.message ?? t('kitchenAI.unknownError'), phone: SUPPORT_PHONE_DISPLAY }),
+          },
         ]),
       );
     } finally {
@@ -67,8 +72,8 @@ export function SupportChatScreen({ navigation }: Props) {
           <BackChevronIcon />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Need Help?</Text>
-          <Text style={styles.headerStatus}>● UlamHub Support</Text>
+          <Text style={styles.headerTitle}>{t('profile.needHelp')}</Text>
+          <Text style={styles.headerStatus}>● {t('supportChat.ulamhubSupport')}</Text>
         </View>
       </View>
 
@@ -89,7 +94,7 @@ export function SupportChatScreen({ navigation }: Props) {
               </View>
               {showCallButton && (
                 <PillButton
-                  label={`📞 Call ${SUPPORT_PHONE_DISPLAY}`}
+                  label={t('supportChat.callPhone', { phone: SUPPORT_PHONE_DISPLAY })}
                   onPress={() => Linking.openURL(SUPPORT_PHONE_TEL)}
                   style={{ marginTop: 8, alignSelf: 'flex-start' }}
                 />
@@ -105,13 +110,15 @@ export function SupportChatScreen({ navigation }: Props) {
           </View>
         )}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 4 }}>
-          {QUICK_CHIPS.map((c) => (
+          {QUICK_CHIP_KEYS.map((key) => (
             <Pressable
-              key={c}
-              onPress={() => send(c)}
-              style={[styles.chip, c === REAL_PERSON_CHIP && styles.chipHighlight]}
+              key={key}
+              onPress={() => send(t(`supportChat.quickChips.${key}`))}
+              style={[styles.chip, key === REAL_PERSON_CHIP_KEY && styles.chipHighlight]}
             >
-              <Text style={[styles.chipText, c === REAL_PERSON_CHIP && styles.chipHighlightText]}>{c}</Text>
+              <Text style={[styles.chipText, key === REAL_PERSON_CHIP_KEY && styles.chipHighlightText]}>
+                {t(`supportChat.quickChips.${key}`)}
+              </Text>
             </Pressable>
           ))}
         </ScrollView>
@@ -121,7 +128,7 @@ export function SupportChatScreen({ navigation }: Props) {
         <TextInput
           value={draft}
           onChangeText={setDraft}
-          placeholder="Describe what's going on…"
+          placeholder={t('supportChat.describePlaceholder')}
           placeholderTextColor={colors.tertiaryText}
           style={styles.input}
           onSubmitEditing={() => send()}

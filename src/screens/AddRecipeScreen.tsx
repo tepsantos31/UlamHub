@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, TextInput, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -14,13 +15,14 @@ type Props = NativeStackScreenProps<RootStackParamList, 'AddRecipe'>;
 
 type MethodKey = 'manual' | 'url' | 'photo';
 
-const METHODS: { key: MethodKey; title: string; desc: string; icon: string; tint: string }[] = [
-  { key: 'manual', title: 'Manual entry', desc: 'Type in your own recipe', icon: '✏️', tint: colors.mint },
-  { key: 'url', title: 'Import from link', desc: 'Instagram · TikTok · YouTube · blog', icon: '🔗', tint: colors.gold },
-  { key: 'photo', title: 'Scan a photo', desc: 'AI reads handwritten or printed recipes', icon: '📷', tint: '#E9EBDD' },
+const METHODS: { key: MethodKey; titleKey: string; descKey: string; icon: string; tint: string }[] = [
+  { key: 'manual', titleKey: 'addRecipe.manualEntry', descKey: 'addRecipe.manualEntryDesc', icon: '✏️', tint: colors.mint },
+  { key: 'url', titleKey: 'addRecipe.importFromLink', descKey: 'addRecipe.importFromLinkDesc', icon: '🔗', tint: colors.gold },
+  { key: 'photo', titleKey: 'addRecipe.scanAPhoto', descKey: 'addRecipe.scanAPhotoDesc', icon: '📷', tint: '#E9EBDD' },
 ];
 
 export function AddRecipeScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const sharedUrl = route.params?.sharedUrl;
   const [method, setMethod] = useState<MethodKey | null>(sharedUrl ? 'url' : null);
   const [url, setUrl] = useState(sharedUrl ?? '');
@@ -49,7 +51,7 @@ export function AddRecipeScreen({ route, navigation }: Props) {
   const runPhotoImport = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Permission needed', 'Photo library access is required to scan a recipe photo.');
+      Alert.alert(t('addRecipe.alerts.permissionNeededTitle'), t('addRecipe.alerts.permissionNeededPhotoBody'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], base64: true, quality: 0.7 });
@@ -59,7 +61,7 @@ export function AddRecipeScreen({ route, navigation }: Props) {
       const extracted = await extractRecipe({ imageBase64: result.assets[0].base64 });
       navigation.replace('AddRecipeReview', { method: 'photo', extracted });
     } catch (e: any) {
-      Alert.alert('Extraction failed', e?.message ?? 'Could not reach the AI backend. Is the server running?');
+      Alert.alert(t('addRecipe.alerts.extractionFailedTitle'), e?.message ?? t('addRecipe.alerts.extractionFailedBody'));
     } finally {
       setLoading(false);
     }
@@ -73,7 +75,7 @@ export function AddRecipeScreen({ route, navigation }: Props) {
       const extracted = await extractRecipe({ url: target });
       navigation.replace('AddRecipeReview', { method: 'url', extracted, sourceUrl: target });
     } catch (e: any) {
-      Alert.alert('Extraction failed', e?.message ?? 'Could not reach the AI backend. Is the server running?');
+      Alert.alert(t('addRecipe.alerts.extractionFailedTitle'), e?.message ?? t('addRecipe.alerts.extractionFailedBody'));
     } finally {
       setLoading(false);
     }
@@ -82,10 +84,8 @@ export function AddRecipeScreen({ route, navigation }: Props) {
   return (
     <Screen withTabBarSpace={false}>
       <HeaderBar onBack={() => navigation.goBack()} />
-      <Text style={styles.title}>Add a recipe</Text>
-      <Text style={styles.subtitle}>
-        However it comes to you — a link, or a photo of grandma's handwritten notebook — we'll turn it into a clean recipe card.
-      </Text>
+      <Text style={styles.title}>{t('addRecipe.title')}</Text>
+      <Text style={styles.subtitle}>{t('addRecipe.subtitle')}</Text>
 
       <View style={{ gap: 12, marginTop: 22 }}>
         {METHODS.map((m) => (
@@ -98,8 +98,8 @@ export function AddRecipeScreen({ route, navigation }: Props) {
               <Text style={{ fontSize: 22 }}>{m.icon}</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.methodTitle}>{m.title}</Text>
-              <Text style={styles.methodDesc}>{m.desc}</Text>
+              <Text style={styles.methodTitle}>{t(m.titleKey)}</Text>
+              <Text style={styles.methodDesc}>{t(m.descKey)}</Text>
             </View>
             <ChevronRightIcon />
           </Pressable>
@@ -108,7 +108,7 @@ export function AddRecipeScreen({ route, navigation }: Props) {
 
       {method === 'url' && (
         <View style={styles.urlBox}>
-          <Text style={styles.urlBoxLabel}>Paste the recipe link</Text>
+          <Text style={styles.urlBoxLabel}>{t('addRecipe.pasteRecipeLink')}</Text>
           <TextInput
             value={url}
             onChangeText={setUrl}
@@ -119,14 +119,14 @@ export function AddRecipeScreen({ route, navigation }: Props) {
             keyboardType="url"
             style={styles.urlInput}
           />
-          <PillButton label="Continue" onPress={() => runUrlImport()} loading={loading} style={{ marginTop: 12 }} />
+          <PillButton label={t('auth.continue')} onPress={() => runUrlImport()} loading={loading} style={{ marginTop: 12 }} />
         </View>
       )}
 
       {loading && method === 'photo' && (
         <View style={styles.loadingBox}>
           <ActivityIndicator color={colors.tealDark} />
-          <Text style={styles.loadingText}>Reading your photo with AI…</Text>
+          <Text style={styles.loadingText}>{t('addRecipe.readingPhotoWithAI')}</Text>
         </View>
       )}
     </Screen>

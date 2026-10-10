@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, Pressable, Alert, Platform, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation, CompositeNavigationProp } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -23,6 +24,7 @@ import { isSubscriptionActive, FREE_RECIPE_CAP } from '../utils/subscription';
 type Nav = CompositeNavigationProp<BottomTabNavigationProp<MainTabParamList, 'Profile'>, NativeStackNavigationProp<RootStackParamList>>;
 
 export function ProfileSettingsScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const { session } = useAuth();
   const [profile, setProfileState] = useState<ProfileState | null>(null);
@@ -77,11 +79,15 @@ export function ProfileSettingsScreen() {
     await patchSettings({ unit: settings.unit === 'metric' ? 'imperial' : 'metric' });
   };
 
+  const toggleLanguage = async () => {
+    await patchSettings({ language: settings.language === 'en' ? 'es' : 'en' });
+  };
+
   const logOut = () => {
-    Alert.alert('Log out', session ? 'You can sign back in any time.' : 'This clears your local onboarding so you can go through it again. Continue?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('profile.logOut'), session ? t('profile.alerts.logOutTitleSignedIn') : t('profile.alerts.logOutTitleLocal'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Log out',
+        text: t('profile.logOut'),
         style: 'destructive',
         onPress: async () => {
           if (session) await signOut();
@@ -97,11 +103,11 @@ export function ProfileSettingsScreen() {
 
   const goToKitchen = () => {
     if (!supabaseConfigured) {
-      Alert.alert('Not set up yet', 'Cloud accounts aren’t configured on this build.');
+      Alert.alert(t('profile.alerts.notSetUpTitle'), t('profile.alerts.notSetUpBody'));
       return;
     }
     if (!session) {
-      Alert.alert('Sign in required', 'Log out and sign in with an account to set up your kitchen.');
+      Alert.alert(t('profile.alerts.signInRequiredTitle'), t('profile.alerts.signInRequiredBody'));
       return;
     }
     navigation.navigate('Kitchen');
@@ -109,16 +115,16 @@ export function ProfileSettingsScreen() {
 
   const deleteAccount = () => {
     if (!session) {
-      Alert.alert('No cloud account', 'You’re not signed in, so there’s no cloud account to delete.');
+      Alert.alert(t('profile.alerts.noCloudAccountTitle'), t('profile.alerts.noCloudAccountBody'));
       return;
     }
     Alert.alert(
-      'Delete account',
-      'This permanently deletes your account and everything tied to it — recipes, meal plan, grocery list, and kitchen membership. This can’t be undone. Note: this doesn’t cancel an active subscription — manage that separately in your App Store or Play Store account settings.',
+      t('profile.alerts.deleteAccountTitle'),
+      t('profile.alerts.deleteAccountBody'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete account',
+          text: t('profile.deleteAccount'),
           style: 'destructive',
           onPress: async () => {
             setDeleting(true);
@@ -131,7 +137,7 @@ export function ProfileSettingsScreen() {
                 routes: [{ name: 'OnboardingCarousel' }],
               });
             } catch (e: any) {
-              Alert.alert('Could not delete account', e?.message ?? 'Something went wrong — please try again.');
+              Alert.alert(t('profile.alerts.deleteFailedTitle'), e?.message ?? t('profile.alerts.deleteFailedDefault'));
             } finally {
               setDeleting(false);
             }
@@ -143,10 +149,10 @@ export function ProfileSettingsScreen() {
 
   const subscriptionActive = isSubscriptionActive(settings);
   const planLabel = !settings.plan
-    ? 'FREE PLAN'
+    ? t('profile.planFree')
     : subscriptionActive
-      ? `${settings.plan.toUpperCase()} PLAN`
-      : `${settings.plan.toUpperCase()} · EXPIRED`;
+      ? t('profile.planActive', { plan: settings.plan.toUpperCase() })
+      : t('profile.planExpired', { plan: settings.plan.toUpperCase() });
   const planBadgeColors = !settings.plan
     ? { bg: colors.mint, fg: colors.tealLink }
     : subscriptionActive
@@ -156,30 +162,30 @@ export function ProfileSettingsScreen() {
     settings.plan && settings.planExpiresAt
       ? subscriptionActive
         ? settings.planCancelled
-          ? `Cancelled — access until ${new Date(settings.planExpiresAt).toLocaleDateString()}`
-          : `Renews ${new Date(settings.planExpiresAt).toLocaleDateString()}`
-        : `Expired ${new Date(settings.planExpiresAt).toLocaleDateString()} — created/shared recipes are locked`
+          ? t('profile.cancelledUntil', { date: new Date(settings.planExpiresAt).toLocaleDateString() })
+          : t('profile.renews', { date: new Date(settings.planExpiresAt).toLocaleDateString() })
+        : t('profile.expiredNote', { date: new Date(settings.planExpiresAt).toLocaleDateString() })
       : null;
 
   const cancelSubscription = () => {
-    const expiry = settings.planExpiresAt ? new Date(settings.planExpiresAt).toLocaleDateString() : 'your current period ends';
+    const expiry = settings.planExpiresAt ? new Date(settings.planExpiresAt).toLocaleDateString() : t('profile.alerts.yourCurrentPeriodEnds');
     if (purchasesConfigured) {
       Alert.alert(
-        'Cancel subscription',
-        `You'll be taken to your ${Platform.OS === 'ios' ? 'App Store' : 'Play Store'} subscription settings to cancel. You'll keep Premium access until ${expiry}.`,
+        t('profile.cancelSubscription'),
+        t('profile.alerts.cancelSubBodyStore', { store: Platform.OS === 'ios' ? t('profile.alerts.appStore') : t('profile.alerts.playStore'), expiry }),
         [
-          { text: 'Not now', style: 'cancel' },
-          { text: 'Continue', onPress: () => openSubscriptionManagement().catch(() => {}) },
+          { text: t('profile.alerts.notNow'), style: 'cancel' },
+          { text: t('profile.alerts.continue'), onPress: () => openSubscriptionManagement().catch(() => {}) },
         ],
       );
     } else {
       Alert.alert(
-        'Cancel subscription',
-        `Your ${settings.plan} plan won't renew, but you'll keep Premium access until ${expiry}.`,
+        t('profile.cancelSubscription'),
+        t('profile.alerts.cancelSubBodyDemo', { plan: settings.plan, expiry }),
         [
-          { text: 'Keep subscription', style: 'cancel' },
+          { text: t('profile.alerts.keepSubscription'), style: 'cancel' },
           {
-            text: 'Cancel subscription',
+            text: t('profile.cancelSubscription'),
             style: 'destructive',
             onPress: async () => {
               await cancelDemoSubscription();
@@ -193,7 +199,7 @@ export function ProfileSettingsScreen() {
 
   return (
     <Screen>
-      <Text style={styles.title}>Profile</Text>
+      <Text style={styles.title}>{t('profile.title')}</Text>
 
       <View style={[styles.profileCard, shadow.soft]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
@@ -203,8 +209,8 @@ export function ProfileSettingsScreen() {
           <View style={{ flex: 1 }}>
             <Text style={styles.name}>{profile.name}</Text>
             <Text style={styles.handle}>
-              {profile.handle} · {onboarding.quiz.household === 'family' ? 'Family' : onboarding.quiz.household} ·{' '}
-              {onboarding.quiz.countries[0] ?? 'All cuisines'}
+              {profile.handle} · {onboarding.quiz.household === 'family' ? t('profile.familyLabel') : onboarding.quiz.household} ·{' '}
+              {onboarding.quiz.countries[0] ?? t('profile.anyCuisine')}
             </Text>
             <View style={[styles.planBadge, { backgroundColor: planBadgeColors.bg }]}>
               <Text style={[styles.planBadgeText, { color: planBadgeColors.fg }]}>{planLabel}</Text>
@@ -218,11 +224,11 @@ export function ProfileSettingsScreen() {
               {recipeCount}
               {!isSubscriptionActive(settings) && <Text style={styles.statNumCap}>/{FREE_RECIPE_CAP}</Text>}
             </Text>
-            <Text style={styles.statLabel}>Recipes</Text>
+            <Text style={styles.statLabel}>{t('profile.recipes')}</Text>
           </Pressable>
           <Pressable style={styles.statCell} onPress={goToKitchen}>
             <Text style={styles.statNum}>{joinedKitchenCount}</Text>
-            <Text style={styles.statLabel}>Kitchens joined</Text>
+            <Text style={styles.statLabel}>{t('profile.kitchensJoined')}</Text>
           </Pressable>
         </View>
       </View>
@@ -234,8 +240,8 @@ export function ProfileSettingsScreen() {
             <Text style={{ fontSize: 22 }}>✨</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.premiumTitle}>Go Premium</Text>
-            <Text style={styles.premiumSub}>Unlimited imports, AI engine & Kitchen</Text>
+            <Text style={styles.premiumTitle}>{t('profile.goPremium')}</Text>
+            <Text style={styles.premiumSub}>{t('profile.goPremiumSub')}</Text>
           </View>
         </Pressable>
       ) : (
@@ -246,78 +252,78 @@ export function ProfileSettingsScreen() {
               <Text style={{ fontSize: 22 }}>💰</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.premiumTitle}>Switch to Annual</Text>
-              <Text style={styles.premiumSub}>Save 33% by paying yearly instead</Text>
+              <Text style={styles.premiumTitle}>{t('profile.switchAnnual')}</Text>
+              <Text style={styles.premiumSub}>{t('profile.switchAnnualSub')}</Text>
             </View>
           </Pressable>
         )
       )}
 
-      <SectionLabel>Preferences</SectionLabel>
+      <SectionLabel>{t('profile.preferences')}</SectionLabel>
       <GroupedList>
         <ListRow
-          label="Dietary & cuisine prefs"
-          value={`${onboarding.quiz.household} · ${onboarding.quiz.countries[0] ?? 'Any'}`}
+          label={t('profile.dietaryCuisinePrefs')}
+          value={`${onboarding.quiz.household} · ${onboarding.quiz.countries[0] ?? t('profile.anyShort')}`}
           onPress={() => navigation.navigate('OnboardingQuiz')}
         />
-        <ListRow label="Unit system" value={settings.unit === 'metric' ? 'Metric' : 'US'} onPress={toggleUnit} />
-        <ListRow label="Language display" value="English" isLast onPress={() => Alert.alert('Language', 'English only for now.')} />
+        <ListRow label={t('profile.unitSystem')} value={settings.unit === 'metric' ? t('profile.metric') : t('profile.us')} onPress={toggleUnit} />
+        <ListRow label={t('profile.languageDisplay')} value={settings.language === 'en' ? t('profile.english') : t('profile.spanish')} isLast onPress={toggleLanguage} />
       </GroupedList>
 
-      <SectionLabel>Cooking Abroad</SectionLabel>
+      <SectionLabel>{t('profile.cookingAbroad')}</SectionLabel>
       <GroupedList>
         <ListRow
-          label="Cooking abroad mode"
+          label={t('profile.cookingAbroadMode')}
           isLast
           right={<ToggleSwitch value={onboarding.quiz.diaspora} onValueChange={toggleCookingAbroad} />}
         />
       </GroupedList>
 
-      <SectionLabel>Notifications</SectionLabel>
+      <SectionLabel>{t('profile.notifications')}</SectionLabel>
       <GroupedList>
         {/* Gates the reminder PartyPlannerScreen schedules from "Remind me
             how many days before" — see onSave() there. */}
-        <ListRow label="Party reminders" right={<ToggleSwitch value={settings.notif.party} onValueChange={() => toggleNotif('party')} />} />
+        <ListRow label={t('profile.partyReminders')} right={<ToggleSwitch value={settings.notif.party} onValueChange={() => toggleNotif('party')} />} />
         {/* Covers kitchen join requests and recipe requests — see the
             "Kitchen requests" group on NotificationsScreen. */}
-        <ListRow label="Social notifications" isLast right={<ToggleSwitch value={settings.notif.social} onValueChange={() => toggleNotif('social')} />} />
+        <ListRow label={t('profile.socialNotifications')} isLast right={<ToggleSwitch value={settings.notif.social} onValueChange={() => toggleNotif('social')} />} />
       </GroupedList>
 
-      <SectionLabel>Kitchen</SectionLabel>
+      <SectionLabel>{t('profile.kitchen')}</SectionLabel>
       <GroupedList>
-        <ListRow label="Kitchen" value={session ? undefined : 'Sign in to join'} isLast onPress={goToKitchen} />
+        <ListRow label={t('profile.kitchen')} value={session ? undefined : t('profile.signInToJoin')} isLast onPress={goToKitchen} />
       </GroupedList>
 
-      <SectionLabel>Account</SectionLabel>
+      <SectionLabel>{t('profile.account')}</SectionLabel>
       <GroupedList>
         <ListRow
-          label={session ? session.user.email ?? 'Signed in' : 'Email & password'}
-          value={session ? 'Signed in' : supabaseConfigured ? 'Not signed in' : undefined}
+          label={session ? session.user.email ?? t('profile.signedIn') : t('profile.emailPassword')}
+          value={session ? t('profile.signedIn') : supabaseConfigured ? t('profile.notSignedIn') : undefined}
           onPress={() =>
             Alert.alert(
-              'Account',
+              t('profile.account'),
               session
-                ? 'Signed in with a real account — synced to the cloud.'
+                ? t('profile.alerts.accountSignedInBody')
                 : supabaseConfigured
-                  ? 'Log out to sign in or create a cloud account.'
-                  : 'Cloud accounts aren’t configured on this build — this is a local-only profile.',
+                  ? t('profile.alerts.accountNotSignedInConfigured')
+                  : t('profile.alerts.accountNotConfigured'),
             )
           }
         />
-        <ListRow label="Export my data" onPress={() => Alert.alert('Export', 'Your data lives on-device in AsyncStorage, and syncs to the cloud if you’re signed in.')} />
-        {subscriptionActive && !settings.planCancelled && <ListRow label="Cancel subscription" onPress={cancelSubscription} />}
-        <ListRow label={deleting ? 'Deleting…' : 'Delete account'} danger isLast onPress={deleting ? () => {} : deleteAccount} />
+        <ListRow label={t('profile.exportMyData')} onPress={() => Alert.alert(t('profile.exportMyData'), t('profile.alerts.exportBody'))} />
+        {subscriptionActive && !settings.planCancelled && <ListRow label={t('profile.cancelSubscription')} onPress={cancelSubscription} />}
+        <ListRow label={deleting ? t('profile.deleting') : t('profile.deleteAccount')} danger isLast onPress={deleting ? () => {} : deleteAccount} />
       </GroupedList>
 
-      <SectionLabel>Support</SectionLabel>
+      <SectionLabel>{t('profile.support')}</SectionLabel>
       <GroupedList>
-        <ListRow label="Need Help?" onPress={() => navigation.navigate('SupportChat')} />
-        <ListRow label="Privacy Policy" onPress={() => navigation.navigate('Legal', { doc: 'privacy' })} />
-        <ListRow label="Terms of Service" isLast onPress={() => navigation.navigate('Legal', { doc: 'terms' })} />
+        <ListRow label={t('profile.needHelp')} onPress={() => navigation.navigate('SupportChat')} />
+        <ListRow label={t('profile.privacyPolicy')} onPress={() => navigation.navigate('Legal', { doc: 'privacy' })} />
+        <ListRow label={t('profile.termsOfService')} isLast onPress={() => navigation.navigate('Legal', { doc: 'terms' })} />
       </GroupedList>
 
       <Text style={styles.logout} onPress={logOut}>
-        Log out
+        {t('profile.logOut')}
       </Text>
     </Screen>
   );

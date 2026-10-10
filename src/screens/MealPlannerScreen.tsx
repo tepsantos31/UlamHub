@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, Pressable, Alert, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, fonts, radii, shadow } from '../theme/theme';
@@ -13,6 +14,7 @@ import { RootStackParamList } from '../navigation/types';
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export function MealPlannerScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const [plan, setPlan] = useState<PlanDay[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -34,7 +36,7 @@ export function MealPlannerScreen() {
 
   const onAutoFill = async () => {
     if (recipes.length === 0) {
-      Alert.alert('No recipes yet', 'Add some recipes first, then Auto-fill can build out your week.');
+      Alert.alert(t('mealPlanner.alerts.noRecipesTitle'), t('mealPlanner.alerts.noRecipesBody'));
       return;
     }
     const next = await autoFillWeek(recipes);
@@ -42,10 +44,10 @@ export function MealPlannerScreen() {
   };
 
   const onClearWeek = () => {
-    Alert.alert('Clear this week', 'This empties every dish for the week.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('mealPlanner.alerts.clearWeekTitle'), t('mealPlanner.alerts.clearWeekBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Clear',
+        text: t('mealPlanner.clear'),
         style: 'destructive',
         onPress: async () => {
           const next = await clearWeek();
@@ -72,7 +74,7 @@ export function MealPlannerScreen() {
   const onAddToGrocery = async (day: PlanDay, dayIndex: number) => {
     const dayRecipes = day.dishes.map((id) => (id ? byId.get(id) : null)).filter((r): r is Recipe => !!r);
     if (dayRecipes.length === 0) {
-      Alert.alert('Nothing to add', 'Add a dish to this day first.');
+      Alert.alert(t('mealPlanner.alerts.nothingToAddTitle'), t('mealPlanner.alerts.nothingToAddBody'));
       return;
     }
     await addRecipesToGrocery(dayRecipes);
@@ -83,15 +85,15 @@ export function MealPlannerScreen() {
   return (
     <Screen>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Meal Planner</Text>
+        <Text style={styles.title}>{t('mealPlanner.title')}</Text>
       </View>
 
       <View style={styles.toolbarRow}>
         <Pressable onPress={onAutoFill} style={styles.autoFillBtn}>
-          <Text style={styles.autoFillText}>✨ Auto-fill</Text>
+          <Text style={styles.autoFillText}>✨ {t('mealPlanner.autoFill')}</Text>
         </Pressable>
         <Pressable onPress={onClearWeek} style={styles.clearWeekBtn}>
-          <Text style={styles.clearWeekText}>Clear week</Text>
+          <Text style={styles.clearWeekText}>{t('mealPlanner.clearWeek')}</Text>
         </Pressable>
       </View>
 
@@ -107,7 +109,7 @@ export function MealPlannerScreen() {
                 {day.dishes.map((recipeId, slotIdx) => (
                   <Pressable key={slotIdx} onPress={() => onDishPress(di, recipeId)} style={styles.slotCell}>
                     <Text style={[styles.slotValue, !recipeId && styles.slotValueEmpty]} numberOfLines={2}>
-                      {recipeId ? byId.get(recipeId)?.name ?? recipeId : '+ Add a dish'}
+                      {recipeId ? byId.get(recipeId)?.name ?? recipeId : `+ ${t('mealPlanner.addADish')}`}
                     </Text>
                   </Pressable>
                 ))}
@@ -115,11 +117,11 @@ export function MealPlannerScreen() {
             </View>
             <View style={styles.dayActions}>
               <Pressable onPress={() => navigation.navigate('EditDayPlan', { dayIndex: di })} style={styles.dayActionBtn}>
-                <Text style={styles.editDayText}>✎ Edit day</Text>
+                <Text style={styles.editDayText}>✎ {t('mealPlanner.editDay')}</Text>
               </Pressable>
               <View style={styles.dayActionDivider} />
               <Pressable onPress={() => onAddToGrocery(day, di)} style={styles.dayActionBtn}>
-                <Text style={styles.addGroceryText}>{addedDay === di ? '✓ Added' : '🧺 Add to grocery list'}</Text>
+                <Text style={styles.addGroceryText}>{addedDay === di ? `✓ ${t('mealPlanner.added')}` : `🧺 ${t('mealPlanner.addToGroceryList')}`}</Text>
               </Pressable>
             </View>
           </View>

@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, Text, Image, ActivityIndicator, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -10,6 +11,7 @@ import { useAuth } from '../lib/auth';
 type Props = NativeStackScreenProps<RootStackParamList, 'Splash'>;
 
 export function SplashScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   // Wait for any persisted session to be restored, and for the initial cloud
   // sync it triggers to finish, before deciding where to route — otherwise
   // we'd read local onboarding state before a freshly-pulled remote copy lands.
@@ -44,7 +46,7 @@ export function SplashScreen({ navigation }: Props) {
       </View>
       <View style={{ alignItems: 'center' }}>
         <Text style={styles.title}>UlamHub</Text>
-        <Text style={styles.subtitle}>Discover. Cook. Share.</Text>
+        <Text style={styles.subtitle}>{t('splash.tagline')}</Text>
       </View>
       <ActivityIndicator color={colors.tealDark} style={{ marginTop: 8 }} />
     </LinearGradient>

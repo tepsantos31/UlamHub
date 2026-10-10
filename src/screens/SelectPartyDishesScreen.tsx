@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Alert, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -13,6 +14,7 @@ import { listRecipes } from '../storage/recipes';
 type Props = NativeStackScreenProps<RootStackParamList, 'SelectPartyDishes'>;
 
 export function SelectPartyDishesScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { limit, initialSelectedIds } = route.params;
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set(initialSelectedIds));
@@ -30,7 +32,7 @@ export function SelectPartyDishesScreen({ route, navigation }: Props) {
         next.delete(id);
       } else {
         if (next.size >= limit) {
-          Alert.alert('Limit reached', `You can only select ${limit} dish${limit === 1 ? '' : 'es'} — remove one first, or change "How many dishes" on the Party Planner.`);
+          Alert.alert(t('selectPartyDishes.limitReachedTitle'), t('selectPartyDishes.limitReachedBody', { count: limit }));
           return prev;
         }
         next.add(id);
@@ -45,10 +47,8 @@ export function SelectPartyDishesScreen({ route, navigation }: Props) {
 
   return (
     <Screen withTabBarSpace={false} scroll={false}>
-      <HeaderBar title="Select Dishes" onBack={() => navigation.goBack()} />
-      <Text style={styles.subtitle}>
-        Choose up to {limit} dish{limit === 1 ? '' : 'es'} from your recipes — {selected.size} selected.
-      </Text>
+      <HeaderBar title={t('partyPlanner.selectDishes')} onBack={() => navigation.goBack()} />
+      <Text style={styles.subtitle}>{t('selectPartyDishes.subtitle', { limit, selected: selected.size })}</Text>
 
       <ScrollView style={{ marginTop: 16 }} contentContainerStyle={{ paddingBottom: 100 }}>
         <View style={[styles.card, shadow.soft]}>
@@ -77,7 +77,7 @@ export function SelectPartyDishesScreen({ route, navigation }: Props) {
 
       <View style={styles.footer}>
         <PillButton
-          label={`Add ${selected.size} to Party Planner`}
+          label={t('selectPartyDishes.addToPartyPlanner', { count: selected.size })}
           onPress={done}
           disabled={selected.size === 0}
         />

@@ -142,6 +142,7 @@ export interface OnboardingState {
 
 export interface SettingsState {
   unit: 'metric' | 'imperial';
+  language: 'en' | 'es';
   notif: {
     // Gates whether PartyPlannerScreen actually schedules the local
     // reminder it builds from "Remind me how many days before" — see its

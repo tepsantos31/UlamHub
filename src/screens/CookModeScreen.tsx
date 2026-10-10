@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, Alert, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useKeepAwake } from 'expo-keep-awake';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -20,6 +21,7 @@ function fmtTime(sec: number) {
 }
 
 export function CookModeScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   useKeepAwake();
   const insets = useSafeAreaInsets();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
@@ -35,8 +37,8 @@ export function CookModeScreen({ route, navigation }: Props) {
       const [r, settings, all] = await Promise.all([getRecipe(route.params.recipeId), getSettings(), listRecipes()]);
       if (!r) return;
       if (!canAccessRecipe(r, settings, all)) {
-        Alert.alert('Recipe locked', 'This recipe needs an active subscription to cook.', [
-          { text: 'OK', onPress: () => navigation.goBack() },
+        Alert.alert(t('cookMode.alerts.lockedTitle'), t('cookMode.alerts.lockedBody'), [
+          { text: t('common.ok'), onPress: () => navigation.goBack() },
         ]);
         return;
       }
@@ -80,7 +82,7 @@ export function CookModeScreen({ route, navigation }: Props) {
           <CloseIcon />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={styles.modeLabel}>COOK MODE · {recipe.name.toUpperCase()}</Text>
+          <Text style={styles.modeLabel}>{t('cookMode.modeLabel', { name: recipe.name.toUpperCase() })}</Text>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${progress}%` }]} />
           </View>
@@ -88,21 +90,21 @@ export function CookModeScreen({ route, navigation }: Props) {
       </View>
 
       <View style={styles.body}>
-        <Text style={styles.stepEyebrow}>
-          STEP {stepIndex + 1} OF {recipe.steps.length}
-        </Text>
+        <Text style={styles.stepEyebrow}>{t('cookMode.stepOf', { current: stepIndex + 1, total: recipe.steps.length })}</Text>
         <Text style={styles.stepText}>{step.text}</Text>
 
         {timer ? (
           <View style={styles.timerBox}>
-            <Text style={styles.timerName}>STEP {step.n} TIMER</Text>
+            <Text style={styles.timerName}>{t('cookMode.stepTimer', { n: step.n })}</Text>
             <View style={styles.timerRow}>
               <Text style={styles.timerVal}>{fmtTime(timer.remaining)}</Text>
               <Pressable
                 onPress={() => setTimer((t) => (t ? { ...t, running: !t.running } : t))}
                 style={styles.timerBtn}
               >
-                <Text style={styles.timerBtnText}>{timer.running ? 'Pause' : timer.remaining === 0 ? 'Done' : 'Resume'}</Text>
+                <Text style={styles.timerBtnText}>
+                  {timer.running ? t('cookMode.pause') : timer.remaining === 0 ? t('cookMode.done') : t('cookMode.resume')}
+                </Text>
               </Pressable>
             </View>
             <View style={styles.timerTrack}>
@@ -111,7 +113,7 @@ export function CookModeScreen({ route, navigation }: Props) {
           </View>
         ) : step.sec > 0 ? (
           <Pressable onPress={() => setTimer({ total: step.sec, remaining: step.sec, running: true })} style={styles.startTimerBtn}>
-            <Text style={styles.startTimerText}>⏱ Start {step.tl} timer</Text>
+            <Text style={styles.startTimerText}>⏱ {t('cookMode.startTimer', { label: step.tl })}</Text>
           </Pressable>
         ) : null}
 
@@ -131,7 +133,7 @@ export function CookModeScreen({ route, navigation }: Props) {
           onPress={() => (stepIndex === recipe.steps.length - 1 ? navigation.goBack() : goStep(stepIndex + 1))}
           style={styles.nextBtn}
         >
-          <Text style={styles.nextBtnText}>{stepIndex === recipe.steps.length - 1 ? 'Finish' : 'Next step ›'}</Text>
+          <Text style={styles.nextBtnText}>{stepIndex === recipe.steps.length - 1 ? t('cookMode.finish') : t('cookMode.nextStep')}</Text>
         </Pressable>
       </View>
     </View>

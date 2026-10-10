@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, TextInput, Pressable, Share, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -35,6 +36,7 @@ import { SettingsState } from '../types/models';
 type Props = NativeStackScreenProps<RootStackParamList, 'Kitchen'>;
 
 export function KitchenScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [kitchens, setKitchens] = useState<KitchenInfo[]>([]);
   const [recipeCount, setRecipeCount] = useState(0);
   const [settings, setSettingsState] = useState<SettingsState | null>(null);
@@ -70,10 +72,11 @@ export function KitchenScreen({ navigation }: Props) {
         setLeaveNotices(notices);
       }
     } catch (e: any) {
-      Alert.alert('Could not load kitchens', e?.message ?? 'Something went wrong.');
+      Alert.alert(t('kitchen.alerts.couldNotLoadTitle'), e?.message ?? t('kitchen.alerts.somethingWentWrong'));
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useFocusEffect(
@@ -88,10 +91,10 @@ export function KitchenScreen({ navigation }: Props) {
     try {
       const name = await requestJoinKitchenByCode(code);
       setCode('');
-      Alert.alert('Request sent', `We'll let you know once ${name} approves it.`);
+      Alert.alert(t('kitchen.alerts.requestSentTitle'), t('kitchen.alerts.requestSentBody', { name }));
       await load();
     } catch (e: any) {
-      Alert.alert('Could not send request', e?.message ?? 'Something went wrong.');
+      Alert.alert(t('kitchen.alerts.couldNotSendRequestTitle'), e?.message ?? t('kitchen.alerts.somethingWentWrong'));
     } finally {
       setJoining(false);
     }
@@ -103,7 +106,7 @@ export function KitchenScreen({ navigation }: Props) {
       await respondToRequest(r.id, approve);
       setRecipeRequests((cur) => cur.filter((x) => x.id !== r.id));
     } catch (e: any) {
-      Alert.alert('Could not respond', e?.message ?? 'Something went wrong.');
+      Alert.alert(t('kitchen.alerts.couldNotRespondTitle'), e?.message ?? t('kitchen.alerts.somethingWentWrong'));
     } finally {
       setRespondingId(null);
     }
@@ -116,7 +119,7 @@ export function KitchenScreen({ navigation }: Props) {
       setJoinRequests((cur) => cur.filter((x) => x.id !== r.id));
       await load();
     } catch (e: any) {
-      Alert.alert('Could not respond', e?.message ?? 'Something went wrong.');
+      Alert.alert(t('kitchen.alerts.couldNotRespondTitle'), e?.message ?? t('kitchen.alerts.somethingWentWrong'));
     } finally {
       setRespondingId(null);
     }
@@ -141,7 +144,7 @@ export function KitchenScreen({ navigation }: Props) {
       setEditingName(false);
       await load();
     } catch (e: any) {
-      Alert.alert('Could not rename kitchen', e?.message ?? 'Something went wrong.');
+      Alert.alert(t('kitchen.alerts.couldNotRenameTitle'), e?.message ?? t('kitchen.alerts.somethingWentWrong'));
     } finally {
       setSavingName(false);
     }
@@ -150,25 +153,29 @@ export function KitchenScreen({ navigation }: Props) {
   const shareInvite = () => {
     if (!ownedKitchen) return;
     const link = Linking.createURL('kitchen/join', { queryParams: { code: ownedKitchen.inviteCode } });
-    Share.share({ message: `Join my kitchen "${ownedKitchen.name}" on UlamHub! Use code ${ownedKitchen.inviteCode}, or just tap: ${link}` });
+    Share.share({ message: t('kitchen.shareInviteMessage', { name: ownedKitchen.name, code: ownedKitchen.inviteCode, link }) });
   };
 
   const onLeave = (k: KitchenInfo) => {
-    Alert.alert('Leave kitchen', `You'll lose access to ${k.name}, and ${k.ownerName ?? 'the owner'} will be notified.`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Leave',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await leaveKitchen(k.id);
-            await load();
-          } catch (e: any) {
-            Alert.alert('Could not leave', e?.message ?? 'Something went wrong.');
-          }
+    Alert.alert(
+      t('kitchen.alerts.leaveKitchenTitle'),
+      t('kitchen.alerts.leaveKitchenBody', { name: k.name, owner: k.ownerName ?? t('kitchen.theOwner') }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('kitchen.leave'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await leaveKitchen(k.id);
+              await load();
+            } catch (e: any) {
+              Alert.alert(t('kitchen.alerts.couldNotLeaveTitle'), e?.message ?? t('kitchen.alerts.somethingWentWrong'));
+            }
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   const subscribed = settings ? isSubscriptionActive(settings) : false;
@@ -177,36 +184,34 @@ export function KitchenScreen({ navigation }: Props) {
 
   return (
     <Screen withTabBarSpace={false}>
-      <HeaderBar title="My Kitchen" onBack={() => navigation.goBack()} />
+      <HeaderBar title={t('kitchen.title')} onBack={() => navigation.goBack()} />
 
       {loading ? (
         <ActivityIndicator color={colors.tealDark} style={{ marginTop: 40 }} />
       ) : !subscribed ? (
         <PremiumGate
           icon="👨‍🍳"
-          title="Kitchen is a Premium feature"
-          body="Joining other kitchens with your crew is available to UlamHub Premium members."
+          title={t('kitchen.premiumFeatureTitle')}
+          body={t('kitchen.premiumFeatureBody')}
           onGoPremium={() => navigation.navigate('Paywall')}
         />
       ) : (
         <>
-          <Text style={styles.subtitle}>
-            Join others by request — once the owner approves, you can browse their recipes and request to add them to yours.
-          </Text>
+          <Text style={styles.subtitle}>{t('kitchen.subtitle')}</Text>
 
           {(joinRequests.length > 0 || recipeRequests.length > 0 || leaveNotices.length > 0) && (
             <>
-              <SectionLabel>Requests</SectionLabel>
+              <SectionLabel>{t('kitchen.requests')}</SectionLabel>
               <View style={{ gap: 10 }}>
                 {joinRequests.map((r) => (
                   <View key={r.id} style={[styles.requestCard, shadow.soft]}>
                     <Text style={styles.requestText}>
-                      <Text style={{ fontFamily: fonts.bodyExtraBold }}>{r.fromUserName}</Text> wants to join{' '}
+                      <Text style={{ fontFamily: fonts.bodyExtraBold }}>{r.fromUserName}</Text> {t('kitchen.wantsToJoinMiddle')}{' '}
                       <Text style={{ fontFamily: fonts.bodyExtraBold }}>{r.kitchenName}</Text>.
                     </Text>
                     <View style={styles.requestActions}>
                       <PillButton
-                        label="Decline"
+                        label={t('kitchen.decline')}
                         onPress={() => respondJoin(r, false)}
                         loading={respondingId === r.id}
                         disabled={respondingId !== null}
@@ -214,7 +219,7 @@ export function KitchenScreen({ navigation }: Props) {
                         style={{ flex: 1 }}
                       />
                       <PillButton
-                        label="Approve"
+                        label={t('kitchen.approve')}
                         onPress={() => respondJoin(r, true)}
                         loading={respondingId === r.id}
                         disabled={respondingId !== null}
@@ -226,12 +231,12 @@ export function KitchenScreen({ navigation }: Props) {
                 {recipeRequests.map((r) => (
                   <View key={r.id} style={[styles.requestCard, shadow.soft]}>
                     <Text style={styles.requestText}>
-                      <Text style={{ fontFamily: fonts.bodyExtraBold }}>{r.fromUserName}</Text> wants to add{' '}
-                      <Text style={{ fontFamily: fonts.bodyExtraBold }}>{r.recipeName}</Text> to their cookbook.
+                      <Text style={{ fontFamily: fonts.bodyExtraBold }}>{r.fromUserName}</Text> {t('kitchen.wantsToAddRecipeMiddle')}{' '}
+                      <Text style={{ fontFamily: fonts.bodyExtraBold }}>{r.recipeName}</Text> {t('kitchen.wantsToAddRecipeSuffix')}
                     </Text>
                     <View style={styles.requestActions}>
                       <PillButton
-                        label="Decline"
+                        label={t('kitchen.decline')}
                         onPress={() => respondRecipe(r, false)}
                         loading={respondingId === r.id}
                         disabled={respondingId !== null}
@@ -239,7 +244,7 @@ export function KitchenScreen({ navigation }: Props) {
                         style={{ flex: 1 }}
                       />
                       <PillButton
-                        label="Approve"
+                        label={t('kitchen.approve')}
                         onPress={() => respondRecipe(r, true)}
                         loading={respondingId === r.id}
                         disabled={respondingId !== null}
@@ -251,17 +256,17 @@ export function KitchenScreen({ navigation }: Props) {
                 {leaveNotices.map((n) => (
                   <View key={n.id} style={[styles.requestCard, shadow.soft]}>
                     <Text style={styles.requestText}>
-                      <Text style={{ fontFamily: fonts.bodyExtraBold }}>{n.userName}</Text> left{' '}
+                      <Text style={{ fontFamily: fonts.bodyExtraBold }}>{n.userName}</Text> {t('kitchen.userLeftMiddle')}{' '}
                       <Text style={{ fontFamily: fonts.bodyExtraBold }}>{n.kitchenName}</Text>.
                     </Text>
-                    <PillButton label="Dismiss" onPress={() => dismissNotice(n)} variant="secondary" style={{ marginTop: 12 }} />
+                    <PillButton label={t('kitchen.dismiss')} onPress={() => dismissNotice(n)} variant="secondary" style={{ marginTop: 12 }} />
                   </View>
                 ))}
               </View>
             </>
           )}
 
-          <SectionLabel>Your kitchen</SectionLabel>
+          <SectionLabel>{t('kitchen.yourKitchen')}</SectionLabel>
           {ownedKitchen ? (
             <View style={[styles.card, shadow.soft]}>
               {editingName ? (
@@ -269,42 +274,40 @@ export function KitchenScreen({ navigation }: Props) {
                   <TextInput
                     value={nameDraft}
                     onChangeText={setNameDraft}
-                    placeholder="Kitchen name"
+                    placeholder={t('kitchen.kitchenNamePlaceholder')}
                     placeholderTextColor={colors.tertiaryText}
                     style={styles.nameInput}
                     autoFocus
                   />
                   <Pressable onPress={saveName} disabled={savingName} hitSlop={8}>
-                    <Text style={styles.nameActionLink}>{savingName ? 'Saving…' : 'Save'}</Text>
+                    <Text style={styles.nameActionLink}>{savingName ? t('addRecipeReview.saving') : t('common.save')}</Text>
                   </Pressable>
                   <Pressable onPress={() => setEditingName(false)} disabled={savingName} hitSlop={8}>
-                    <Text style={[styles.nameActionLink, { color: colors.secondaryText }]}>Cancel</Text>
+                    <Text style={[styles.nameActionLink, { color: colors.secondaryText }]}>{t('common.cancel')}</Text>
                   </Pressable>
                 </View>
               ) : (
                 <Pressable onPress={startEditingName} style={styles.nameRow}>
                   <Text style={styles.kitchenName}>{ownedKitchen.name}</Text>
-                  <Text style={styles.nameActionLink}>Edit</Text>
+                  <Text style={styles.nameActionLink}>{t('common.edit')}</Text>
                 </Pressable>
               )}
-              <Text style={styles.kitchenSub}>
-                {recipeCount} recipe{recipeCount === 1 ? '' : 's'}
-              </Text>
+              <Text style={styles.kitchenSub}>{t('kitchen.recipeCount', { count: recipeCount })}</Text>
               <Pressable onPress={shareInvite} style={styles.codeRow}>
-                <Text style={styles.codeLabel}>Invite code · tap to share</Text>
+                <Text style={styles.codeLabel}>{t('kitchen.inviteCodeTapToShare')}</Text>
                 <Text style={styles.codeValue}>{ownedKitchen.inviteCode}</Text>
               </Pressable>
             </View>
           ) : (
             <View style={[styles.emptyCrew, shadow.soft]}>
-              <Text style={styles.emptyCrewText}>Setting up your kitchen…</Text>
+              <Text style={styles.emptyCrewText}>{t('kitchen.settingUp')}</Text>
             </View>
           )}
 
-          <SectionLabel>Joined kitchens</SectionLabel>
+          <SectionLabel>{t('kitchen.joinedKitchens')}</SectionLabel>
           {joinedKitchens.length === 0 ? (
             <View style={[styles.emptyCrew, shadow.soft]}>
-              <Text style={styles.emptyCrewText}>You haven't joined anyone else's kitchen yet — request to join one below.</Text>
+              <Text style={styles.emptyCrewText}>{t('kitchen.noJoinedKitchens')}</Text>
             </View>
           ) : (
             <GroupedList>
@@ -312,12 +315,12 @@ export function KitchenScreen({ navigation }: Props) {
                 <ListRow
                   key={k.id}
                   label={k.name}
-                  value="View recipes →"
+                  value={t('kitchen.viewRecipes')}
                   isLast={i === joinedKitchens.length - 1}
                   onPress={() => navigation.navigate('MemberKitchen', { memberId: k.ownerId!, kitchenName: k.name })}
                   right={
                     <Pressable onPress={() => onLeave(k)} hitSlop={8}>
-                      <Text style={styles.leaveLink}>Leave</Text>
+                      <Text style={styles.leaveLink}>{t('kitchen.leave')}</Text>
                     </Pressable>
                   }
                 />
@@ -329,23 +332,23 @@ export function KitchenScreen({ navigation }: Props) {
             <View style={[styles.pendingBox, shadow.soft]}>
               {sentJoinRequests.map((r) => (
                 <Text key={r.id} style={styles.pendingText}>
-                  Waiting for approval to join <Text style={{ fontFamily: fonts.bodyExtraBold }}>{r.kitchenName}</Text>
+                  {t('kitchen.waitingForApprovalPrefix')} <Text style={{ fontFamily: fonts.bodyExtraBold }}>{r.kitchenName}</Text>
                 </Text>
               ))}
             </View>
           )}
 
-          <SectionLabel>Request to join with a code</SectionLabel>
+          <SectionLabel>{t('kitchen.requestToJoinWithCode')}</SectionLabel>
           <TextInput
             value={code}
             onChangeText={(v) => setCode(v.toUpperCase())}
-            placeholder="Invite code"
+            placeholder={t('kitchen.inviteCodePlaceholder')}
             placeholderTextColor={colors.tertiaryText}
             autoCapitalize="characters"
             style={styles.input}
           />
           <PillButton
-            label="Request to join"
+            label={t('kitchen.requestToJoin')}
             onPress={onJoin}
             loading={joining}
             disabled={joining}

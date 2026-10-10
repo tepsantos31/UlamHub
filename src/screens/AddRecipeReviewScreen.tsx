@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, TextInput, Pressable, Animated, PanResponder, PanResponderGestureState, Alert, ActivityIndicator, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -40,6 +41,7 @@ function offsetOf(steps: EditableStep[], heights: Record<string, number>, id: st
 }
 
 export function AddRecipeReviewScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { extracted, sourceUrl: initialSourceUrl, method } = route.params;
 
   const [photoUri, setPhotoUri] = useState<string | undefined>(undefined);
@@ -126,7 +128,7 @@ export function AddRecipeReviewScreen({ route, navigation }: Props) {
   const pickPhoto = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Permission needed', 'Photo library access is required to add a photo.');
+      Alert.alert(t('recipeDetail.alerts.permissionNeededTitle'), t('recipeDetail.alerts.permissionNeededBody'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7, allowsEditing: true, aspect: [4, 3] });
@@ -136,14 +138,14 @@ export function AddRecipeReviewScreen({ route, navigation }: Props) {
 
   const generatePhoto = async () => {
     if (!name.trim()) {
-      Alert.alert('Add a name first', 'Give the recipe a name so the AI knows what to generate.');
+      Alert.alert(t('addRecipeReview.alerts.addNameFirstTitle'), t('addRecipeReview.alerts.addNameFirstBody'));
       return;
     }
     const settings = await getSettings();
     if (!isSubscriptionActive(settings)) {
-      Alert.alert('Premium feature', 'Generating a photo with AI is available to UlamHub Premium members.', [
-        { text: 'Not now', style: 'cancel' },
-        { text: 'Go Premium', onPress: () => navigation.navigate('Paywall') },
+      Alert.alert(t('recipeDetail.alerts.premiumFeatureTitle'), t('recipeDetail.alerts.generatePhotoPremiumBody'), [
+        { text: t('recipeDetail.alerts.notNow'), style: 'cancel' },
+        { text: t('recipeDetail.alerts.goPremium'), onPress: () => navigation.navigate('Paywall') },
       ]);
       return;
     }
@@ -157,17 +159,17 @@ export function AddRecipeReviewScreen({ route, navigation }: Props) {
       });
       setPhotoUri(`data:image/png;base64,${imageBase64}`);
     } catch (e: any) {
-      Alert.alert('Could not generate photo', e?.message ?? 'Something went wrong — please try again.');
+      Alert.alert(t('recipeDetail.alerts.generatePhotoFailedTitle'), e?.message ?? t('common.error'));
     } finally {
       setGeneratingPhoto(false);
     }
   };
 
   const choosePhotoSource = () => {
-    Alert.alert('Add a photo', undefined, [
-      { text: 'Choose from library', onPress: pickPhoto },
-      { text: 'Generate with AI', onPress: generatePhoto },
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('addRecipeReview.addAPhoto'), undefined, [
+      { text: t('recipeDetail.alerts.chooseFromLibrary'), onPress: pickPhoto },
+      { text: t('recipeDetail.alerts.generateWithAI'), onPress: generatePhoto },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 
@@ -175,11 +177,11 @@ export function AddRecipeReviewScreen({ route, navigation }: Props) {
     const [existing, settings] = await Promise.all([listRecipes(), getSettings()]);
     if (!canAddRecipe(settings, existing)) {
       Alert.alert(
-        'Recipe limit reached',
-        `Free accounts can save up to ${FREE_RECIPE_CAP} recipes. Subscribe to UlamHub Premium for unlimited recipes.`,
+        t('addRecipeReview.alerts.recipeLimitTitle'),
+        t('addRecipeReview.alerts.recipeLimitBody', { cap: FREE_RECIPE_CAP }),
         [
-          { text: 'Not now', style: 'cancel' },
-          { text: 'Go Premium', onPress: () => navigation.navigate('Paywall') },
+          { text: t('recipeDetail.alerts.notNow'), style: 'cancel' },
+          { text: t('recipeDetail.alerts.goPremium'), onPress: () => navigation.navigate('Paywall') },
         ],
       );
       return;
@@ -215,7 +217,7 @@ export function AddRecipeReviewScreen({ route, navigation }: Props) {
       cooks: 0,
       budget: '$$',
       diff: 'Home cook',
-      author: 'You',
+      author: t('addRecipeReview.you'),
       servingsBase: parseInt(servings, 10) || 4,
       sourceUrl: sourceUrl.trim() || undefined,
       photoUri,
@@ -240,11 +242,9 @@ export function AddRecipeReviewScreen({ route, navigation }: Props) {
   return (
     <Screen withTabBarSpace={false} scrollEnabled={!dragId}>
       <HeaderBar onBack={() => navigation.goBack()} />
-      <Text style={styles.title}>Review your recipe</Text>
+      <Text style={styles.title}>{t('addRecipeReview.title')}</Text>
       <Text style={styles.subtitle}>
-        {method === 'leftover'
-          ? 'AI dreamed this up from your leftovers — edit anything, then save it to your cookbook.'
-          : 'Edit anything the AI got wrong, then save it to your cookbook.'}
+        {method === 'leftover' ? t('addRecipeReview.subtitleLeftover') : t('addRecipeReview.subtitleDefault')}
       </Text>
 
       <Pressable onPress={generatingPhoto ? undefined : choosePhotoSource} style={styles.photoPicker}>
@@ -253,29 +253,29 @@ export function AddRecipeReviewScreen({ route, navigation }: Props) {
           {generatingPhoto ? (
             <>
               <ActivityIndicator color={colors.white} />
-              <Text style={styles.photoPickerText}>Generating…</Text>
+              <Text style={styles.photoPickerText}>{t('addRecipeReview.generating')}</Text>
             </>
           ) : (
             <>
               <Text style={{ fontSize: 20 }}>📷</Text>
-              <Text style={styles.photoPickerText}>{photoUri ? 'Change photo' : 'Add a photo'}</Text>
+              <Text style={styles.photoPickerText}>{photoUri ? t('addRecipeReview.changePhoto') : t('addRecipeReview.addAPhoto')}</Text>
             </>
           )}
         </View>
       </Pressable>
 
-      <Field label="Name" value={name} onChangeText={setName} placeholder="Chicken Adobo" />
+      <Field label={t('addRecipeReview.name')} value={name} onChangeText={setName} placeholder="Chicken Adobo" />
       <View style={styles.row2}>
         <View style={{ flex: 1 }}>
-          <Field label="Country" value={country} onChangeText={setCountry} placeholder="Filipino" />
+          <Field label={t('addRecipeReview.country')} value={country} onChangeText={setCountry} placeholder="Filipino" />
         </View>
         <View style={{ flex: 1 }}>
-          <Field label="Type" value={type} onChangeText={setType} placeholder="Guisado" />
+          <Field label={t('addRecipeReview.type')} value={type} onChangeText={setType} placeholder="Guisado" />
         </View>
       </View>
-      <Field label="Region (optional)" value={region} onChangeText={setRegion} placeholder="Tagalog" />
+      <Field label={t('addRecipeReview.regionOptional')} value={region} onChangeText={setRegion} placeholder="Tagalog" />
       <Field
-        label="Source link (optional)"
+        label={t('addRecipeReview.sourceLinkOptional')}
         value={sourceUrl}
         onChangeText={setSourceUrl}
         placeholder="https://…"
@@ -284,27 +284,27 @@ export function AddRecipeReviewScreen({ route, navigation }: Props) {
       />
       <View style={styles.row2}>
         <View style={{ flex: 1 }}>
-          <Field label="Servings" value={servings} onChangeText={setServings} keyboardType="number-pad" />
+          <Field label={t('recipeDetail.servings')} value={servings} onChangeText={setServings} keyboardType="number-pad" />
         </View>
         <View style={{ flex: 1 }}>
-          <Field label="Time (min)" value={time} onChangeText={setTime} keyboardType="number-pad" />
+          <Field label={t('addRecipeReview.timeMin')} value={time} onChangeText={setTime} keyboardType="number-pad" />
         </View>
       </View>
 
-      <Text style={styles.h2}>Ingredients</Text>
+      <Text style={styles.h2}>{t('recipeDetail.ingredients')}</Text>
       {ingredients.map((ing, i) => (
         <View key={i} style={styles.ingRow}>
           <TextInput
             value={ing.name}
             onChangeText={(v) => updateIngredient(i, { name: v })}
-            placeholder="Ingredient"
+            placeholder={t('recipeDetail.ingredientPlaceholder')}
             placeholderTextColor={colors.tertiaryText}
             style={[styles.input, { flex: 2 }]}
           />
           <TextInput
             value={String(ing.qty)}
             onChangeText={(v) => updateIngredient(i, { qty: parseFloat(v) || 0 })}
-            placeholder="Qty"
+            placeholder={t('recipeDetail.qtyPlaceholder')}
             keyboardType="numeric"
             placeholderTextColor={colors.tertiaryText}
             style={[styles.input, { flex: 0.7 }]}
@@ -312,7 +312,7 @@ export function AddRecipeReviewScreen({ route, navigation }: Props) {
           <TextInput
             value={ing.unit}
             onChangeText={(v) => updateIngredient(i, { unit: v })}
-            placeholder="unit"
+            placeholder={t('recipeDetail.unitPlaceholder')}
             placeholderTextColor={colors.tertiaryText}
             style={[styles.input, { flex: 0.8 }]}
           />
@@ -322,11 +322,11 @@ export function AddRecipeReviewScreen({ route, navigation }: Props) {
         </View>
       ))}
       <Pressable onPress={addIngredient}>
-        <Text style={styles.addLink}>＋ Add ingredient</Text>
+        <Text style={styles.addLink}>＋ {t('recipeDetail.addIngredient')}</Text>
       </Pressable>
 
-      <Text style={styles.h2}>Steps</Text>
-      <Text style={styles.h2Sub}>Drag the ⠿ handle to reorder a step</Text>
+      <Text style={styles.h2}>{t('recipeDetail.steps')}</Text>
+      <Text style={styles.h2Sub}>{t('addRecipeReview.dragToReorder')}</Text>
       <View style={{ position: 'relative' }}>
         {steps.map((st, i) => (
           <StepRow
@@ -360,7 +360,7 @@ export function AddRecipeReviewScreen({ route, navigation }: Props) {
                 <Text style={styles.stepNum}>{dragged.n}</Text>
                 <View style={[styles.input, { flex: 1, minHeight: 44, justifyContent: 'center' }]}>
                   <Text style={{ fontSize: 14, color: colors.ink, fontFamily: fonts.bodyMedium }} numberOfLines={3}>
-                    {dragged.text || 'Describe this step…'}
+                    {dragged.text || t('recipeDetail.describeStepPlaceholder')}
                   </Text>
                 </View>
                 <View style={styles.removeBtn} />
@@ -369,11 +369,11 @@ export function AddRecipeReviewScreen({ route, navigation }: Props) {
           })()}
       </View>
       <Pressable onPress={addStep}>
-        <Text style={styles.addLink}>＋ Add step</Text>
+        <Text style={styles.addLink}>＋ {t('recipeDetail.addStep')}</Text>
       </Pressable>
 
       <PillButton
-        label={saving ? (extracted ? 'Saving…' : 'Estimating calories…') : 'Save recipe'}
+        label={saving ? (extracted ? t('addRecipeReview.saving') : t('addRecipeReview.estimatingCalories')) : t('addRecipeReview.saveRecipe')}
         onPress={save}
         loading={saving}
         disabled={!canSave || saving}
@@ -404,6 +404,7 @@ function StepRow({
     onDragRelease: () => void;
   }>;
 }) {
+  const { t } = useTranslation();
   const heightRef = useRef(ROW_HEIGHT_ESTIMATE);
 
   // Created once per row (rows are keyed by stable `id`, so this survives
@@ -434,7 +435,7 @@ function StepRow({
       <TextInput
         value={step.text}
         onChangeText={onChangeText}
-        placeholder="Describe this step…"
+        placeholder={t('recipeDetail.describeStepPlaceholder')}
         placeholderTextColor={colors.tertiaryText}
         multiline
         style={[styles.input, { flex: 1, minHeight: 44 }]}

@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -25,6 +26,7 @@ async function copyIntoCookbook(recipe: Recipe): Promise<string> {
 }
 
 export function MemberKitchenScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { memberId, kitchenName } = route.params;
   const [recipes, setRecipes] = useState<Recipe[] | null>(null);
   const [selected, setSelected] = useState<Recipe | null>(null);
@@ -67,11 +69,11 @@ export function MemberKitchenScreen({ route, navigation }: Props) {
     const [existing, settings] = await Promise.all([listRecipes(), getSettings()]);
     if (!canAddRecipe(settings, existing)) {
       Alert.alert(
-        'Recipe limit reached',
-        `Free accounts can save up to ${FREE_RECIPE_CAP} recipes. Subscribe to UlamHub Premium for unlimited recipes.`,
+        t('addRecipeReview.alerts.recipeLimitTitle'),
+        t('addRecipeReview.alerts.recipeLimitBody', { cap: FREE_RECIPE_CAP }),
         [
-          { text: 'Not now', style: 'cancel' },
-          { text: 'Go Premium', onPress: () => navigation.navigate('Paywall') },
+          { text: t('recipeDetail.alerts.notNow'), style: 'cancel' },
+          { text: t('recipeDetail.alerts.goPremium'), onPress: () => navigation.navigate('Paywall') },
         ],
       );
       return;
@@ -82,7 +84,7 @@ export function MemberKitchenScreen({ route, navigation }: Props) {
       const status = await getMyRequestStatus(selected.id, memberId);
       setRequest(status);
     } catch (e: any) {
-      Alert.alert('Could not send request', e?.message ?? 'Something went wrong.');
+      Alert.alert(t('kitchen.alerts.couldNotSendRequestTitle'), e?.message ?? t('kitchen.alerts.somethingWentWrong'));
     } finally {
       setBusy(false);
     }
@@ -111,10 +113,10 @@ export function MemberKitchenScreen({ route, navigation }: Props) {
         </View>
         <Text style={styles.detailName}>{selected.name}</Text>
         <Text style={styles.detailSub}>
-          ⏱ {selected.time}m · {selected.ingredients.length} ingredients · from {kitchenName}
+          {t('memberKitchen.detailSub', { time: selected.time, count: selected.ingredients.length, kitchen: kitchenName })}
         </Text>
 
-        <Text style={styles.h2}>Ingredients</Text>
+        <Text style={styles.h2}>{t('recipeDetail.ingredients')}</Text>
         <View style={{ gap: 8 }}>
           {selected.ingredients.map((ing, i) => (
             <Text key={i} style={styles.ingredientLine}>
@@ -123,7 +125,7 @@ export function MemberKitchenScreen({ route, navigation }: Props) {
           ))}
         </View>
 
-        <Text style={styles.h2}>Steps</Text>
+        <Text style={styles.h2}>{t('recipeDetail.steps')}</Text>
         <View style={{ gap: 14 }}>
           {selected.steps.map((s) => (
             <View key={s.n} style={styles.stepRow}>
@@ -137,19 +139,19 @@ export function MemberKitchenScreen({ route, navigation }: Props) {
           <ActivityIndicator color={colors.tealDark} style={{ marginTop: 24 }} />
         ) : request?.status === 'pending' ? (
           <View style={[styles.statusPill, { backgroundColor: colors.gold }]}>
-            <Text style={[styles.statusPillText, { color: colors.goldText }]}>Requested — waiting for {kitchenName} to approve</Text>
+            <Text style={[styles.statusPillText, { color: colors.goldText }]}>{t('memberKitchen.waitingForApproval', { kitchen: kitchenName })}</Text>
           </View>
         ) : request?.status === 'approved' ? (
-          <PillButton label={busy ? 'Adding…' : 'Add to my cookbook'} onPress={finishApprovedCopy} loading={busy} style={{ marginTop: 24 }} />
+          <PillButton label={busy ? t('memberKitchen.adding') : t('memberKitchen.addToCookbook')} onPress={finishApprovedCopy} loading={busy} style={{ marginTop: 24 }} />
         ) : request?.status === 'declined' ? (
           <>
             <View style={[styles.statusPill, { backgroundColor: colors.coralBg }]}>
-              <Text style={[styles.statusPillText, { color: colors.coralSoft }]}>{kitchenName} declined this request</Text>
+              <Text style={[styles.statusPillText, { color: colors.coralSoft }]}>{t('memberKitchen.declined', { kitchen: kitchenName })}</Text>
             </View>
-            <PillButton label="Request again" onPress={sendRequest} loading={busy} variant="secondary" style={{ marginTop: 10 }} />
+            <PillButton label={t('memberKitchen.requestAgain')} onPress={sendRequest} loading={busy} variant="secondary" style={{ marginTop: 10 }} />
           </>
         ) : (
-          <PillButton label={busy ? 'Sending…' : 'Request to Share'} onPress={sendRequest} loading={busy} style={{ marginTop: 24 }} />
+          <PillButton label={busy ? t('memberKitchen.sending') : t('memberKitchen.requestToShare')} onPress={sendRequest} loading={busy} style={{ marginTop: 24 }} />
         )}
       </Screen>
     );
@@ -164,11 +166,8 @@ export function MemberKitchenScreen({ route, navigation }: Props) {
       ) : recipes.length === 0 ? (
         <View style={styles.emptyBox}>
           <Text style={{ fontSize: 30 }}>📖</Text>
-          <Text style={styles.emptyTitle}>Nothing here yet</Text>
-          <Text style={styles.emptyBody}>
-            No recipes from {kitchenName} yet — only recipes they've created, imported, or saved show up here, not the
-            built-in cuisine library everyone already has.
-          </Text>
+          <Text style={styles.emptyTitle}>{t('myRecipes.emptyTitle')}</Text>
+          <Text style={styles.emptyBody}>{t('memberKitchen.emptyBody', { kitchen: kitchenName })}</Text>
         </View>
       ) : (
         <View style={styles.grid}>

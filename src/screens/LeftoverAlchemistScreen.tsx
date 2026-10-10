@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, TextInput, Pressable, Image, ScrollView, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -25,6 +26,7 @@ interface StagedPhoto {
 }
 
 export function LeftoverAlchemistScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [photos, setPhotos] = useState<StagedPhoto[]>([]);
   const [text, setText] = useState('');
   const [cuisine, setCuisine] = useState<string | null>(null);
@@ -40,7 +42,7 @@ export function LeftoverAlchemistScreen({ navigation }: Props) {
   const takePhoto = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Permission needed', 'Camera access is required to snap your leftovers.');
+      Alert.alert(t('recipeDetail.alerts.permissionNeededTitle'), t('leftoverAlchemist.alerts.cameraPermissionBody'));
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ base64: true, quality: 0.7 });
@@ -51,7 +53,7 @@ export function LeftoverAlchemistScreen({ navigation }: Props) {
   const pickFromLibrary = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Permission needed', 'Photo library access is required to add a photo.');
+      Alert.alert(t('recipeDetail.alerts.permissionNeededTitle'), t('recipeDetail.alerts.permissionNeededBody'));
       return;
     }
     // allowsMultipleSelection so a whole fridge/pantry haul can be added in
@@ -77,7 +79,7 @@ export function LeftoverAlchemistScreen({ navigation }: Props) {
       });
       navigation.replace('AddRecipeReview', { method: 'leftover', extracted });
     } catch (e: any) {
-      Alert.alert('Alchemy failed', e?.message ?? 'Could not reach the AI backend. Is the server running?');
+      Alert.alert(t('leftoverAlchemist.alerts.alchemyFailedTitle'), e?.message ?? t('addRecipe.alerts.extractionFailedBody'));
     } finally {
       setLoading(false);
     }
@@ -91,37 +93,35 @@ export function LeftoverAlchemistScreen({ navigation }: Props) {
       <View style={styles.badge}>
         <Text style={{ fontSize: 22 }}>🧪</Text>
       </View>
-      <Text style={styles.title}>Leftover Alchemist</Text>
-      <Text style={styles.subtitle}>
-        Show me what's left in the fridge — snap a few photos, add a note, and pick a cuisine if you want one — I'll invent something new to make with it.
-      </Text>
+      <Text style={styles.title}>{t('leftoverAlchemist.title')}</Text>
+      <Text style={styles.subtitle}>{t('leftoverAlchemist.subtitle')}</Text>
 
       {settings && !isSubscriptionActive(settings) ? (
         <PremiumGate
           icon="🧪"
-          title="Leftover Alchemist is a Premium tool"
-          body="Turning your leftovers into a new dish uses Kitchen AI — subscribe to UlamHub Premium to unlock it."
+          title={t('leftoverAlchemist.premiumToolTitle')}
+          body={t('leftoverAlchemist.premiumToolBody')}
           onGoPremium={() => navigation.navigate('Paywall')}
         />
       ) : (
         <>
-      <Text style={styles.label}>Cuisine (optional)</Text>
+      <Text style={styles.label}>{t('leftoverAlchemist.cuisineOptional')}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-        <Chip label="Surprise me" active={cuisine === null} onPress={() => setCuisine(null)} small />
+        <Chip label={t('leftoverAlchemist.surpriseMe')} active={cuisine === null} onPress={() => setCuisine(null)} small />
         {COUNTRIES.map((c) => (
           <Chip key={c} label={c} active={cuisine === c} onPress={() => setCuisine(c)} small />
         ))}
       </ScrollView>
 
-      <Text style={styles.label}>Photos</Text>
+      <Text style={styles.label}>{t('leftoverAlchemist.photos')}</Text>
       <View style={styles.actionsRow}>
         <Pressable onPress={takePhoto} style={[styles.actionCard, shadow.soft]}>
           <Text style={{ fontSize: 20 }}>📷</Text>
-          <Text style={styles.actionLabel}>Take a photo</Text>
+          <Text style={styles.actionLabel}>{t('leftoverAlchemist.takeAPhoto')}</Text>
         </Pressable>
         <Pressable onPress={pickFromLibrary} style={[styles.actionCard, shadow.soft]}>
           <Text style={{ fontSize: 20 }}>🖼️</Text>
-          <Text style={styles.actionLabel}>Choose from library</Text>
+          <Text style={styles.actionLabel}>{t('recipeDetail.alerts.chooseFromLibrary')}</Text>
         </Pressable>
       </View>
 
@@ -138,21 +138,21 @@ export function LeftoverAlchemistScreen({ navigation }: Props) {
         </ScrollView>
       )}
 
-      <Text style={styles.orText}>{photos.length > 0 ? 'anything else to mention?' : 'or tell me what you have'}</Text>
+      <Text style={styles.orText}>{photos.length > 0 ? t('leftoverAlchemist.anythingElse') : t('leftoverAlchemist.orTellMe')}</Text>
       <TextInput
         value={text}
         onChangeText={setText}
-        placeholder="e.g. leftover rice, half an onion, some eggs, a bit of tinapa…"
+        placeholder={t('leftoverAlchemist.inputPlaceholder')}
         placeholderTextColor={colors.tertiaryText}
         multiline
         style={styles.textInput}
       />
-      <PillButton label="Work your magic ✨" onPress={run} disabled={!canSubmit} style={{ marginTop: 12 }} />
+      <PillButton label={t('leftoverAlchemist.workYourMagic')} onPress={run} disabled={!canSubmit} style={{ marginTop: 12 }} />
 
       {loading && (
         <View style={styles.loadingBox}>
           <ActivityIndicator color={colors.tealDark} />
-          <Text style={styles.loadingText}>Inventing something delicious…</Text>
+          <Text style={styles.loadingText}>{t('leftoverAlchemist.inventingSomething')}</Text>
         </View>
       )}
         </>

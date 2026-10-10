@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { colors, fonts, radii } from '../theme/theme';
@@ -15,6 +16,7 @@ import { canAddRecipe, FREE_RECIPE_CAP } from '../utils/subscription';
 type Props = NativeStackScreenProps<RootStackParamList, 'SharedRecipe'>;
 
 export function SharedRecipeScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { rowId } = route.params;
   const [loading, setLoading] = useState(true);
   const [recipe, setRecipe] = useState<Recipe | null>(null);
@@ -39,11 +41,11 @@ export function SharedRecipeScreen({ route, navigation }: Props) {
     const [existing, settings] = await Promise.all([listRecipes(), getSettings()]);
     if (!canAddRecipe(settings, existing)) {
       Alert.alert(
-        'Recipe limit reached',
-        `Free accounts can save up to ${FREE_RECIPE_CAP} recipes. Subscribe to UlamHub Premium for unlimited recipes.`,
+        t('addRecipeReview.alerts.recipeLimitTitle'),
+        t('addRecipeReview.alerts.recipeLimitBody', { cap: FREE_RECIPE_CAP }),
         [
-          { text: 'Not now', style: 'cancel' },
-          { text: 'Go Premium', onPress: () => navigation.navigate('Paywall') },
+          { text: t('recipeDetail.alerts.notNow'), style: 'cancel' },
+          { text: t('recipeDetail.alerts.goPremium'), onPress: () => navigation.navigate('Paywall') },
         ],
       );
       return;
@@ -57,7 +59,7 @@ export function SharedRecipeScreen({ route, navigation }: Props) {
 
   return (
     <Screen withTabBarSpace={false}>
-      <HeaderBar title="Shared recipe" onBack={() => navigation.goBack()} />
+      <HeaderBar title={t('sharedRecipe.title')} onBack={() => navigation.goBack()} />
 
       {loading && (
         <View style={styles.centerBox}>
@@ -67,8 +69,8 @@ export function SharedRecipeScreen({ route, navigation }: Props) {
 
       {!loading && notFound && (
         <View style={styles.centerBox}>
-          <Text style={styles.notFoundTitle}>This link isn't available</Text>
-          <Text style={styles.notFoundBody}>The recipe may have been unshared, or the link is incorrect.</Text>
+          <Text style={styles.notFoundTitle}>{t('sharedRecipe.notFoundTitle')}</Text>
+          <Text style={styles.notFoundBody}>{t('sharedRecipe.notFoundBody')}</Text>
         </View>
       )}
 
@@ -80,11 +82,11 @@ export function SharedRecipeScreen({ route, navigation }: Props) {
           </View>
           <Text style={styles.name}>{recipe.name}</Text>
           <Text style={styles.subline}>
-            {recipe.ingredients.length} ingredients · {recipe.steps.length} steps · {recipe.time}m
+            {t('sharedRecipe.subline', { ingredients: recipe.ingredients.length, steps: recipe.steps.length, time: recipe.time })}
           </Text>
-          <Text style={styles.author}>Shared by {recipe.author || 'a fellow cook'}</Text>
+          <Text style={styles.author}>{t('sharedRecipe.sharedBy', { author: recipe.author || t('home.aFellowCook') })}</Text>
 
-          <PillButton label={saving ? 'Saving…' : 'Save to my cookbook'} onPress={saveToCookbook} loading={saving} style={{ marginTop: 22 }} />
+          <PillButton label={saving ? t('addRecipeReview.saving') : t('sharedRecipe.saveToCookbook')} onPress={saveToCookbook} loading={saving} style={{ marginTop: 22 }} />
         </View>
       )}
     </Screen>
