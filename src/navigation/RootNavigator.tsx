@@ -14,6 +14,7 @@ import { AddRecipeReviewScreen } from '../screens/AddRecipeReviewScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
 import { PaywallScreen } from '../screens/PaywallScreen';
 import { LeftoverAlchemistScreen } from '../screens/LeftoverAlchemistScreen';
+import { WhatCanIMakeScreen } from '../screens/WhatCanIMakeScreen';
 import { IngredientScannerScreen } from '../screens/IngredientScannerScreen';
 import { PartyPlannerScreen } from '../screens/PartyPlannerScreen';
 import { SelectPartyDishesScreen } from '../screens/SelectPartyDishesScreen';
@@ -45,6 +46,7 @@ export function RootNavigator() {
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="Paywall" component={PaywallScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="LeftoverAlchemist" component={LeftoverAlchemistScreen} options={{ animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="WhatCanIMake" component={WhatCanIMakeScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="IngredientScanner" component={IngredientScannerScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="PartyPlanner" component={PartyPlannerScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="SelectPartyDishes" component={SelectPartyDishesScreen} />

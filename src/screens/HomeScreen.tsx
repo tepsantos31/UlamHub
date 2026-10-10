@@ -22,7 +22,8 @@ type Nav = CompositeNavigationProp<
   NativeStackNavigationProp<RootStackParamList>
 >;
 
-const AI_TOOLS: { labelKey: string; descKey: string; icon: string; tint: string; route: 'LeftoverAlchemist' | 'IngredientScanner' | 'PartyPlanner' }[] = [
+const AI_TOOLS: { labelKey: string; descKey: string; icon: string; tint: string; route: 'WhatCanIMake' | 'LeftoverAlchemist' | 'IngredientScanner' | 'PartyPlanner' }[] = [
+  { labelKey: 'home.whatCanIMake', descKey: 'home.whatCanIMakeDesc', icon: '💡', tint: colors.mint, route: 'WhatCanIMake' },
   { labelKey: 'home.leftoverAlchemist', descKey: 'home.leftoverAlchemistDesc', icon: '🧪', tint: colors.coralBg, route: 'LeftoverAlchemist' },
   { labelKey: 'home.ingredientScanner', descKey: 'home.ingredientScannerDesc', icon: '🔍', tint: colors.mint, route: 'IngredientScanner' },
   { labelKey: 'home.partyPlanner', descKey: 'home.partyPlannerDesc', icon: '🎉', tint: colors.gold, route: 'PartyPlanner' },

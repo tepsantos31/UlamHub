@@ -244,7 +244,11 @@ export function AddRecipeReviewScreen({ route, navigation }: Props) {
       <HeaderBar onBack={() => navigation.goBack()} />
       <Text style={styles.title}>{t('addRecipeReview.title')}</Text>
       <Text style={styles.subtitle}>
-        {method === 'leftover' ? t('addRecipeReview.subtitleLeftover') : t('addRecipeReview.subtitleDefault')}
+        {method === 'leftover'
+          ? t('addRecipeReview.subtitleLeftover')
+          : method === 'whatcanimake'
+            ? t('addRecipeReview.subtitleWhatCanIMake')
+            : t('addRecipeReview.subtitleDefault')}
       </Text>
 
       <Pressable onPress={generatingPhoto ? undefined : choosePhotoSource} style={styles.photoPicker}>

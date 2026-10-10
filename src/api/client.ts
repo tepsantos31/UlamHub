@@ -79,6 +79,14 @@ export function leftoverAlchemist(input: { imageBase64s?: string[]; text?: strin
   return post<ExtractedRecipe>('/api/leftover-alchemist', input);
 }
 
+// Unlike leftoverAlchemist, the returned ingredients' `have` field is
+// actually populated here — true for what the user showed/listed, false for
+// what the dish additionally needs. excludeNames lets a "Regenerate" button
+// ask for something genuinely different from what's already been suggested.
+export function whatCanIMake(input: { imageBase64s?: string[]; text?: string; cuisine?: string; excludeNames?: string[] }): Promise<ExtractedRecipe> {
+  return post<ExtractedRecipe>('/api/what-can-i-make', input);
+}
+
 export function estimateNutrition(input: { ingredients: Ingredient[]; servings: number }): Promise<{ kcal: number; nutrition: Nutrition }> {
   return post<{ kcal: number; nutrition: Nutrition }>('/api/estimate-nutrition', input);
 }

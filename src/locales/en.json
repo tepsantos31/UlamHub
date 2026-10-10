@@ -155,6 +155,8 @@
     "seeAll": "See all",
     "noRecipesYet": "No recipes yet — add your first one above.",
     "aiKitchenTools": "AI Kitchen Tools",
+    "whatCanIMake": "What Can I Make?",
+    "whatCanIMakeDesc": "Get a dish idea from what you have",
     "leftoverAlchemist": "Leftover Alchemist",
     "leftoverAlchemistDesc": "Turn leftovers into a new dish",
     "ingredientScanner": "Ingredient Scanner",
@@ -348,6 +350,7 @@
   "addRecipeReview": {
     "title": "Review your recipe",
     "subtitleLeftover": "AI dreamed this up from your leftovers — edit anything, then save it to your cookbook.",
+    "subtitleWhatCanIMake": "AI suggested this from what you have on hand — edit anything, then save it to your cookbook.",
     "subtitleDefault": "Edit anything the AI got wrong, then save it to your cookbook.",
     "generating": "Generating…",
     "changePhoto": "Change photo",
@@ -407,6 +410,32 @@
     "alerts": {
       "cameraPermissionBody": "Camera access is required to snap your leftovers.",
       "alchemyFailedTitle": "Alchemy failed"
+    }
+  },
+  "whatCanIMake": {
+    "title": "What Can I Make?",
+    "subtitle": "Show me what you've got — snap a photo, type it out, or dictate it with your keyboard's mic — and I'll suggest something you can actually cook with it.",
+    "premiumToolTitle": "What Can I Make? is a Premium tool",
+    "premiumToolBody": "Getting dish ideas from your own ingredients uses Kitchen AI — subscribe to UlamHub Premium to unlock it.",
+    "cuisineOptional": "Cuisine (optional)",
+    "surpriseMe": "Surprise me",
+    "photos": "Photos",
+    "takeAPhoto": "Take a photo",
+    "anythingElse": "anything else to mention?",
+    "orTellMe": "or tell me what you have — type it or use your keyboard's dictation",
+    "inputPlaceholder": "e.g. 2 chicken breasts, a can of coconut milk, some spinach…",
+    "suggestADish": "Suggest a dish ✨",
+    "thinkingUpADish": "Thinking up a dish…",
+    "youAlreadyHave": "You already have",
+    "youllNeedToGet": "You'll need to get",
+    "optionOf": "Option {{current}} of {{total}}",
+    "regenerate": "Regenerate ✨",
+    "regenerateLimitReached": "You've used all 5 regenerations",
+    "useThisRecipe": "Use this recipe",
+    "startOver": "Start over",
+    "alerts": {
+      "cameraPermissionBody": "Camera access is required to snap your ingredients.",
+      "suggestionFailedTitle": "Couldn't come up with anything"
     }
   },
   "ingredientScanner": {

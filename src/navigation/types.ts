@@ -10,11 +10,12 @@ export type RootStackParamList = {
   CookMode: { recipeId: string };
   KitchenAI: { prefill?: string } | undefined;
   AddRecipe: { sharedUrl?: string } | undefined;
-  AddRecipeReview: { method: 'manual' | 'url' | 'photo' | 'leftover'; extracted?: ExtractedRecipe; sourceUrl?: string };
+  AddRecipeReview: { method: 'manual' | 'url' | 'photo' | 'leftover' | 'whatcanimake'; extracted?: ExtractedRecipe; sourceUrl?: string };
   ShareIntent: undefined;
   Notifications: undefined;
   Paywall: undefined;
   LeftoverAlchemist: undefined;
+  WhatCanIMake: undefined;
   IngredientScanner: undefined;
   PartyPlanner: { selectedRecipeIds?: string[] } | undefined;
   SelectPartyDishes: { limit: number; initialSelectedIds: string[] };

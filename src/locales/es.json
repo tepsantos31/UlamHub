@@ -155,6 +155,8 @@
     "seeAll": "Ver todo",
     "noRecipesYet": "Aún no hay recetas — agrega la primera arriba.",
     "aiKitchenTools": "Herramientas de IA para la cocina",
+    "whatCanIMake": "¿Qué puedo cocinar?",
+    "whatCanIMakeDesc": "Obtén una idea de platillo con lo que tienes",
     "leftoverAlchemist": "Alquimista de sobras",
     "leftoverAlchemistDesc": "Convierte las sobras en un platillo nuevo",
     "ingredientScanner": "Escáner de ingredientes",
@@ -348,6 +350,7 @@
   "addRecipeReview": {
     "title": "Revisa tu receta",
     "subtitleLeftover": "La IA creó esto a partir de tus sobras — edita lo que quieras y guárdalo en tu recetario.",
+    "subtitleWhatCanIMake": "La IA sugirió esto con lo que ya tienes — edita lo que quieras y guárdalo en tu recetario.",
     "subtitleDefault": "Edita lo que la IA haya hecho mal, luego guárdalo en tu recetario.",
     "generating": "Generando…",
     "changePhoto": "Cambiar foto",
@@ -407,6 +410,32 @@
     "alerts": {
       "cameraPermissionBody": "Se requiere acceso a la cámara para fotografiar tus sobras.",
       "alchemyFailedTitle": "La alquimia falló"
+    }
+  },
+  "whatCanIMake": {
+    "title": "¿Qué puedo cocinar?",
+    "subtitle": "Muéstrame lo que tienes — toma una foto, escríbelo, o dictálo con el micrófono de tu teclado — y te sugeriré algo que puedas cocinar con eso.",
+    "premiumToolTitle": "¿Qué puedo cocinar? es una herramienta Premium",
+    "premiumToolBody": "Obtener ideas de platillos con tus propios ingredientes usa Kitchen AI — suscríbete a UlamHub Premium para desbloquearlo.",
+    "cuisineOptional": "Tipo de cocina (opcional)",
+    "surpriseMe": "Sorpréndeme",
+    "photos": "Fotos",
+    "takeAPhoto": "Tomar una foto",
+    "anythingElse": "¿algo más que mencionar?",
+    "orTellMe": "o dime qué tienes — escríbelo o usa el dictado de tu teclado",
+    "inputPlaceholder": "ej. 2 pechugas de pollo, una lata de leche de coco, algo de espinaca…",
+    "suggestADish": "Sugerir un platillo ✨",
+    "thinkingUpADish": "Pensando en un platillo…",
+    "youAlreadyHave": "Ya tienes",
+    "youllNeedToGet": "Necesitarás conseguir",
+    "optionOf": "Opción {{current}} de {{total}}",
+    "regenerate": "Regenerar ✨",
+    "regenerateLimitReached": "Ya usaste las 5 regeneraciones",
+    "useThisRecipe": "Usar esta receta",
+    "startOver": "Empezar de nuevo",
+    "alerts": {
+      "cameraPermissionBody": "Se requiere acceso a la cámara para fotografiar tus ingredientes.",
+      "suggestionFailedTitle": "No se pudo generar nada"
     }
   },
   "ingredientScanner": {
