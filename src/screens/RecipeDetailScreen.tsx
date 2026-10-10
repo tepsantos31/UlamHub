@@ -38,7 +38,10 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
   const [unit, setUnit] = useState<'metric' | 'imperial'>('metric');
   // true = checked = "I still need to buy this" = gets added to the grocery
   // list; unchecking an ingredient means you already have it in your pantry.
-  const [toBuyFlags, setToBuyFlags] = useState<Record<string, boolean>>({});
+  // Keyed by index, not name — two ingredients can share a name (e.g. "salt"
+  // listed once for the marinade and again for finishing), and a name-keyed
+  // map would collide them into a single toggle and a duplicate React key.
+  const [toBuyFlags, setToBuyFlags] = useState<Record<number, boolean>>({});
   const [flavorTip, setFlavorTip] = useState<string | null>(null);
   const [flavorLoading, setFlavorLoading] = useState(false);
   const [addedToast, setAddedToast] = useState(false);
@@ -67,7 +70,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
         setAllRecipes(all);
         setServings(r.servingsBase);
         setUnit(settings.unit);
-        setToBuyFlags(Object.fromEntries(r.ingredients.map((i) => [i.name, !i.have])));
+        setToBuyFlags(Object.fromEntries(r.ingredients.map((i, idx) => [idx, !i.have])));
         setFlavorTip(null);
         setStoryOpen(false);
         setStoryError(null);
@@ -233,7 +236,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
     }
     const next = { ...recipe, ingredients: cleaned };
     setRecipe(next);
-    setToBuyFlags(Object.fromEntries(cleaned.map((i) => [i.name, !i.have])));
+    setToBuyFlags(Object.fromEntries(cleaned.map((i, idx) => [idx, !i.have])));
     await saveRecipe(next);
     setEditingIngredients(false);
   };
@@ -272,7 +275,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
   const addMissing = async () => {
     // Only the checked ("still need to buy") ingredients go to the grocery
     // list — unchecking one marks it as already in your pantry.
-    const toAdd = { ...recipe, ingredients: recipe.ingredients.filter((i) => toBuyFlags[i.name]) };
+    const toAdd = { ...recipe, ingredients: recipe.ingredients.filter((i, idx) => toBuyFlags[idx]) };
     if (toAdd.ingredients.length === 0) {
       Alert.alert(t('recipeDetail.alerts.nothingToAddTitle'), t('recipeDetail.alerts.nothingToAddBody'));
       return;
@@ -487,12 +490,12 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
           ) : (
             <View style={styles.card}>
               {recipe.ingredients.map((ing, i) => {
-                const toBuy = toBuyFlags[ing.name];
+                const toBuy = toBuyFlags[i];
                 const scaled = scaleIngredient(ing.qty, ing.unit, ratio, unit);
                 return (
                   <Pressable
-                    key={ing.name}
-                    onPress={() => setToBuyFlags((prev) => ({ ...prev, [ing.name]: !prev[ing.name] }))}
+                    key={i}
+                    onPress={() => setToBuyFlags((prev) => ({ ...prev, [i]: !prev[i] }))}
                     style={[styles.ingRow, i !== recipe.ingredients.length - 1 && styles.rowBorder]}
                   >
                     <View style={[styles.checkbox, toBuy && { backgroundColor: colors.teal, borderColor: colors.teal }]}>
@@ -515,8 +518,8 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
           <Text style={[styles.h2, { marginBottom: 4 }]}>{t('recipeDetail.saucePairing')}</Text>
           <Text style={styles.h2Sub}>{t('recipeDetail.saucePairingSub')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 11, paddingBottom: 4 }}>
-            {recipe.saucePairings.map((d) => (
-              <View key={d.name} style={styles.saucePairingCard}>
+            {recipe.saucePairings.map((d, di) => (
+              <View key={di} style={styles.saucePairingCard}>
                 <View style={styles.saucePairingIcon}>
                   <Text style={{ fontSize: 16 }}>🥢</Text>
                 </View>

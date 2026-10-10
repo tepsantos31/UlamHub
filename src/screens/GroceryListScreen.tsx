@@ -189,7 +189,7 @@ export function GroceryListScreen() {
 
       <View style={{ gap: 16, marginTop: 20 }}>
         {groups.map((g, gi) => (
-          <View key={g.name}>
+          <View key={gi}>
             <Text style={styles.groupName}>{g.name}</Text>
             <View style={styles.card}>
               {g.items.map((it, ii) => {
