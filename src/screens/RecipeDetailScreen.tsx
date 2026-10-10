@@ -501,7 +501,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
                     <View style={[styles.checkbox, toBuy && { backgroundColor: colors.teal, borderColor: colors.teal }]}>
                       {toBuy && <Text style={styles.checkboxTick}>✓</Text>}
                     </View>
-                    <Text style={styles.ingName}>{ing.name}</Text>
+                    <Text style={[styles.ingName, !toBuy && styles.ingNameHave]}>{ing.name}</Text>
                     <Text style={styles.ingAmount}>
                       {scaled.qty} {scaled.unit}
                     </Text>
@@ -758,6 +758,7 @@ const styles = StyleSheet.create({
   checkbox: { width: 22, height: 22, borderRadius: 7, borderWidth: 2, borderColor: colors.borderMuted, alignItems: 'center', justifyContent: 'center' },
   checkboxTick: { color: colors.deepGreen, fontSize: 13, fontWeight: '800' },
   ingName: { flex: 1, fontSize: 14, color: colors.ink, fontFamily: fonts.body },
+  ingNameHave: { color: colors.tertiaryText, textDecorationLine: 'line-through' },
   ingAmount: { fontSize: 13.5, fontFamily: fonts.bodyBold, color: colors.sageText },
   addMissingRow: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 13 },
   addMissingPlus: { fontSize: 16, color: colors.tealLink },
