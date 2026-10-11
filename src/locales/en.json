@@ -245,11 +245,7 @@
       "stopSharing": "Stop sharing",
       "permissionNeededTitle": "Permission needed",
       "permissionNeededBody": "Photo library access is required to add a photo.",
-      "generatePhotoPremiumBody": "Generating a photo with AI is available to UlamHub Premium members.",
-      "generatePhotoFailedTitle": "Could not generate photo",
-      "recipePhotoTitle": "Recipe photo",
       "chooseFromLibrary": "Choose from library",
-      "generateWithAI": "Generate with AI",
       "missingInfoTitle": "Missing info",
       "keepOneIngredient": "Keep at least one ingredient.",
       "keepOneStep": "Keep at least one step.",
@@ -352,7 +348,6 @@
     "subtitleLeftover": "AI dreamed this up from your leftovers — edit anything, then save it to your cookbook.",
     "subtitleWhatCanIMake": "AI suggested this from what you have on hand — edit anything, then save it to your cookbook.",
     "subtitleDefault": "Edit anything the AI got wrong, then save it to your cookbook.",
-    "generating": "Generating…",
     "changePhoto": "Change photo",
     "addAPhoto": "Add a photo",
     "name": "Name",
@@ -367,8 +362,6 @@
     "saveRecipe": "Save recipe",
     "you": "You",
     "alerts": {
-      "addNameFirstTitle": "Add a name first",
-      "addNameFirstBody": "Give the recipe a name so the AI knows what to generate.",
       "recipeLimitTitle": "Recipe limit reached",
       "recipeLimitBody": "Free accounts can save up to {{cap}} recipes. Subscribe to UlamHub Premium for unlimited recipes."
     }

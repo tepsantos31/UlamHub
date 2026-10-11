@@ -52,6 +52,12 @@ export interface ExtractedRecipe {
   ingredients: Ingredient[];
   steps: RecipeStep[];
   sourceUrl?: string;
+  // Only ever set for a URL import — the source post/page's own photo
+  // (its og:image), not an AI-generated one. base64-encoded, raw (no
+  // data: prefix yet) so the caller can pick the right data URI scheme
+  // from photoMimeType.
+  photoBase64?: string;
+  photoMimeType?: string;
 }
 
 export function extractRecipe(input: { url?: string; text?: string; imageBase64?: string }): Promise<ExtractedRecipe> {
@@ -89,15 +95,6 @@ export function whatCanIMake(input: { imageBase64s?: string[]; text?: string; cu
 
 export function estimateNutrition(input: { ingredients: Ingredient[]; servings: number }): Promise<{ kcal: number; nutrition: Nutrition }> {
   return post<{ kcal: number; nutrition: Nutrition }>('/api/estimate-nutrition', input);
-}
-
-export function generateRecipePhoto(input: {
-  name: string;
-  country?: string;
-  type?: string;
-  ingredients?: string[];
-}): Promise<{ imageBase64: string }> {
-  return post<{ imageBase64: string }>('/api/generate-photo', input);
 }
 
 export interface ScannedIngredient {

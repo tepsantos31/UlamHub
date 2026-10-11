@@ -15,7 +15,7 @@ import { getRecipe, saveRecipe, deleteRecipe, listRecipes } from '../storage/rec
 import { addMissingIngredientsToGrocery } from '../storage/grocery';
 import { getSettings } from '../storage/settings';
 import { scaleIngredient } from '../utils/units';
-import { chatMessage, getRecipeStory, generateRecipePhoto } from '../api/client';
+import { chatMessage, getRecipeStory } from '../api/client';
 import { shareRecipe as shareRecipeRemote, unshareRecipe as unshareRecipeRemote } from '../lib/sync';
 import { canAccessRecipe, isSubscriptionActive } from '../utils/subscription';
 
@@ -51,7 +51,6 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
   const [storyError, setStoryError] = useState<string | null>(null);
   const [settings, setSettingsState] = useState<SettingsState | null>(null);
   const [allRecipes, setAllRecipes] = useState<Recipe[]>([]);
-  const [generatingPhoto, setGeneratingPhoto] = useState(false);
   // Ingredients and steps are edited independently — editing one doesn't
   // put the other section into edit mode, and each saves on its own.
   const [editingIngredients, setEditingIngredients] = useState(false);
@@ -176,34 +175,6 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
     const next = { ...recipe, photoUri: result.assets[0].uri };
     setRecipe(next);
     await saveRecipe(next);
-  };
-
-  const generatePhoto = async () => {
-    if (!requirePremium(t('recipeDetail.alerts.generatePhotoPremiumBody'))) return;
-    setGeneratingPhoto(true);
-    try {
-      const { imageBase64 } = await generateRecipePhoto({
-        name: recipe.name,
-        country: String(recipe.country),
-        type: recipe.type,
-        ingredients: recipe.ingredients.map((i) => i.name).filter(Boolean),
-      });
-      const next = { ...recipe, photoUri: `data:image/png;base64,${imageBase64}` };
-      setRecipe(next);
-      await saveRecipe(next);
-    } catch (e: any) {
-      Alert.alert(t('recipeDetail.alerts.generatePhotoFailedTitle'), e?.message ?? t('common.error'));
-    } finally {
-      setGeneratingPhoto(false);
-    }
-  };
-
-  const changePhoto = () => {
-    Alert.alert(t('recipeDetail.alerts.recipePhotoTitle'), undefined, [
-      { text: t('recipeDetail.alerts.chooseFromLibrary'), onPress: pickPhoto },
-      { text: t('recipeDetail.alerts.generateWithAI'), onPress: generatePhoto },
-      { text: t('common.cancel'), style: 'cancel' },
-    ]);
   };
 
   const addMadeItPhoto = async () => {
@@ -353,8 +324,8 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
               <BackChevronIcon />
             </Pressable>
             <View style={{ flexDirection: 'row', gap: 10 }}>
-              <Pressable onPress={changePhoto} disabled={generatingPhoto} style={styles.circleBtn}>
-                {generatingPhoto ? <ActivityIndicator size="small" color={colors.ink} /> : <Text style={{ fontSize: 16 }}>📷</Text>}
+              <Pressable onPress={pickPhoto} style={styles.circleBtn}>
+                <Text style={{ fontSize: 16 }}>📷</Text>
               </Pressable>
               <Pressable onPress={toggleFavorite} style={styles.circleBtn}>
                 <HeartIcon color={recipe.favorite ? colors.coral : '#C4CBB8'} />

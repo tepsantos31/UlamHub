@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, TextInput, Pressable, Animated, PanResponder, PanResponderGestureState, Alert, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Pressable, Animated, PanResponder, PanResponderGestureState, Alert, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -12,8 +12,8 @@ import { PlaceholderImage } from '../components/PlaceholderImage';
 import { Ingredient, Recipe } from '../types/models';
 import { makeRecipeId, saveRecipe, listRecipes } from '../storage/recipes';
 import { getSettings } from '../storage/settings';
-import { generateRecipePhoto, estimateNutrition } from '../api/client';
-import { canAddRecipe, FREE_RECIPE_CAP, isSubscriptionActive } from '../utils/subscription';
+import { estimateNutrition } from '../api/client';
+import { canAddRecipe, FREE_RECIPE_CAP } from '../utils/subscription';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddRecipeReview'>;
 
@@ -44,8 +44,12 @@ export function AddRecipeReviewScreen({ route, navigation }: Props) {
   const { t } = useTranslation();
   const { extracted, sourceUrl: initialSourceUrl, method } = route.params;
 
-  const [photoUri, setPhotoUri] = useState<string | undefined>(undefined);
-  const [generatingPhoto, setGeneratingPhoto] = useState(false);
+  // A URL import's own source photo (the post's og:image, fetched server-side
+  // in extract-recipe) arrives pre-attached here — the user can still swap it
+  // for one from their library, but nothing needs to be generated.
+  const [photoUri, setPhotoUri] = useState<string | undefined>(
+    extracted?.photoBase64 ? `data:${extracted.photoMimeType || 'image/jpeg'};base64,${extracted.photoBase64}` : undefined,
+  );
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState(extracted?.name ?? '');
   const [sourceUrl, setSourceUrl] = useState(initialSourceUrl ?? extracted?.sourceUrl ?? '');
@@ -136,43 +140,6 @@ export function AddRecipeReviewScreen({ route, navigation }: Props) {
     setPhotoUri(result.assets[0].uri);
   };
 
-  const generatePhoto = async () => {
-    if (!name.trim()) {
-      Alert.alert(t('addRecipeReview.alerts.addNameFirstTitle'), t('addRecipeReview.alerts.addNameFirstBody'));
-      return;
-    }
-    const settings = await getSettings();
-    if (!isSubscriptionActive(settings)) {
-      Alert.alert(t('recipeDetail.alerts.premiumFeatureTitle'), t('recipeDetail.alerts.generatePhotoPremiumBody'), [
-        { text: t('recipeDetail.alerts.notNow'), style: 'cancel' },
-        { text: t('recipeDetail.alerts.goPremium'), onPress: () => navigation.navigate('Paywall') },
-      ]);
-      return;
-    }
-    setGeneratingPhoto(true);
-    try {
-      const { imageBase64 } = await generateRecipePhoto({
-        name: name.trim(),
-        country,
-        type,
-        ingredients: ingredients.map((i) => i.name).filter(Boolean),
-      });
-      setPhotoUri(`data:image/png;base64,${imageBase64}`);
-    } catch (e: any) {
-      Alert.alert(t('recipeDetail.alerts.generatePhotoFailedTitle'), e?.message ?? t('common.error'));
-    } finally {
-      setGeneratingPhoto(false);
-    }
-  };
-
-  const choosePhotoSource = () => {
-    Alert.alert(t('addRecipeReview.addAPhoto'), undefined, [
-      { text: t('recipeDetail.alerts.chooseFromLibrary'), onPress: pickPhoto },
-      { text: t('recipeDetail.alerts.generateWithAI'), onPress: generatePhoto },
-      { text: t('common.cancel'), style: 'cancel' },
-    ]);
-  };
-
   const save = async () => {
     const [existing, settings] = await Promise.all([listRecipes(), getSettings()]);
     if (!canAddRecipe(settings, existing)) {
@@ -251,20 +218,11 @@ export function AddRecipeReviewScreen({ route, navigation }: Props) {
             : t('addRecipeReview.subtitleDefault')}
       </Text>
 
-      <Pressable onPress={generatingPhoto ? undefined : choosePhotoSource} style={styles.photoPicker}>
+      <Pressable onPress={pickPhoto} style={styles.photoPicker}>
         <PlaceholderImage uri={photoUri} style={StyleSheet.absoluteFill} borderRadius={radii.lg} />
         <View style={styles.photoPickerOverlay}>
-          {generatingPhoto ? (
-            <>
-              <ActivityIndicator color={colors.white} />
-              <Text style={styles.photoPickerText}>{t('addRecipeReview.generating')}</Text>
-            </>
-          ) : (
-            <>
-              <Text style={{ fontSize: 20 }}>📷</Text>
-              <Text style={styles.photoPickerText}>{photoUri ? t('addRecipeReview.changePhoto') : t('addRecipeReview.addAPhoto')}</Text>
-            </>
-          )}
+          <Text style={{ fontSize: 20 }}>📷</Text>
+          <Text style={styles.photoPickerText}>{photoUri ? t('addRecipeReview.changePhoto') : t('addRecipeReview.addAPhoto')}</Text>
         </View>
       </Pressable>
 

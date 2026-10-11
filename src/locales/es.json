@@ -245,11 +245,7 @@
       "stopSharing": "Dejar de compartir",
       "permissionNeededTitle": "Permiso necesario",
       "permissionNeededBody": "Se requiere acceso a la biblioteca de fotos para agregar una foto.",
-      "generatePhotoPremiumBody": "Generar una foto con IA está disponible para miembros Premium de UlamHub.",
-      "generatePhotoFailedTitle": "No se pudo generar la foto",
-      "recipePhotoTitle": "Foto de la receta",
       "chooseFromLibrary": "Elegir de la biblioteca",
-      "generateWithAI": "Generar con IA",
       "missingInfoTitle": "Información faltante",
       "keepOneIngredient": "Mantén al menos un ingrediente.",
       "keepOneStep": "Mantén al menos un paso.",
@@ -352,7 +348,6 @@
     "subtitleLeftover": "La IA creó esto a partir de tus sobras — edita lo que quieras y guárdalo en tu recetario.",
     "subtitleWhatCanIMake": "La IA sugirió esto con lo que ya tienes — edita lo que quieras y guárdalo en tu recetario.",
     "subtitleDefault": "Edita lo que la IA haya hecho mal, luego guárdalo en tu recetario.",
-    "generating": "Generando…",
     "changePhoto": "Cambiar foto",
     "addAPhoto": "Agregar una foto",
     "name": "Nombre",
@@ -367,8 +362,6 @@
     "saveRecipe": "Guardar receta",
     "you": "Tú",
     "alerts": {
-      "addNameFirstTitle": "Agrega un nombre primero",
-      "addNameFirstBody": "Dale un nombre a la receta para que la IA sepa qué generar.",
       "recipeLimitTitle": "Límite de recetas alcanzado",
       "recipeLimitBody": "Las cuentas gratuitas pueden guardar hasta {{cap}} recetas. Suscríbete a UlamHub Premium para recetas ilimitadas."
     }
