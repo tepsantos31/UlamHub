@@ -111,6 +111,8 @@ async function syncSingleton<T>(
   push: (value: T) => Promise<void>,
 ): Promise<void> {
   const remote = await pull();
+  // TEMP diagnostic — remove alongside the other temp logs in this file.
+  if (key === KEYS.settings) console.warn('[sync] syncSingleton settings', { remote });
   if (remote != null) {
     await setJSON(key, remote);
   } else {
