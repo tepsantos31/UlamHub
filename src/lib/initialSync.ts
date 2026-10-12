@@ -32,13 +32,37 @@ import {
   pullProfile,
 } from './sync';
 
+// Each step runs independently — one table failing to sync (a write too
+// large for local storage, a transient network error, whatever) must never
+// silently take the rest down with it. Before this, every step after
+// recipes in this function (plan, grocery, settings, onboarding, profile)
+// depended on a single shared try/catch far away in auth.tsx, so a single
+// thrown error here could silently skip settings (and therefore premium
+// status) and profile on every single sync, with nothing visible anywhere.
+async function runStep(label: string, fn: () => Promise<void>): Promise<void> {
+  try {
+    await fn();
+  } catch (e) {
+    console.warn(`[sync:${Platform.OS}] step failed: ${label}`, e);
+  }
+}
+
 export async function runInitialSync(): Promise<void> {
-  // Recipes: multi-row, so "empty" means zero rows came back. Remote wins
-  // for anything it already has, but a local user-added recipe remote
-  // doesn't know about yet (e.g. an earlier background push silently
-  // failed — see saveRecipe's .catch) gets pushed up and kept, rather than
-  // being wiped out by treating remote as the sole source of truth. That
-  // silent-overwrite was the likely cause of recipes "disappearing".
+  await runStep('recipes', syncRecipes);
+  await runStep('plan', () => syncSingleton(KEYS.plan, getPlan, pullPlan, pushPlan));
+  await runStep('grocery', () => syncSingleton(KEYS.grocery, getGrocery, pullGrocery, pushGrocery));
+  await runStep('settings', () => syncSingleton(KEYS.settings, getSettings, pullSettings, pushSettings));
+  await runStep('onboarding', () => syncSingleton(KEYS.onboarding, getOnboarding, pullOnboarding, pushOnboarding));
+  await runStep('profile', syncProfile);
+}
+
+// Multi-row, so "empty" means zero rows came back. Remote wins for anything
+// it already has, but a local user-added recipe remote doesn't know about
+// yet (e.g. an earlier background push silently failed — see saveRecipe's
+// .catch) gets pushed up and kept, rather than being wiped out by treating
+// remote as the sole source of truth. That silent-overwrite was the likely
+// cause of recipes "disappearing".
+async function syncRecipes(): Promise<void> {
   const remoteRecipes = await pullRecipes();
   const local = await listRecipes();
   console.warn(`[sync:${Platform.OS}] runInitialSync recipes`, { remoteCount: remoteRecipes?.length ?? null, localCount: local.length });
@@ -55,12 +79,6 @@ export async function runInitialSync(): Promise<void> {
   } else {
     local.forEach((r) => pushRecipe(r).catch(() => {}));
   }
-
-  await syncSingleton(KEYS.plan, getPlan, pullPlan, pushPlan);
-  await syncSingleton(KEYS.grocery, getGrocery, pullGrocery, pushGrocery);
-  await syncSingleton(KEYS.settings, getSettings, pullSettings, pushSettings);
-  await syncSingleton(KEYS.onboarding, getOnboarding, pullOnboarding, pushOnboarding);
-  await syncProfile();
 }
 
 // Profile needs one extra step beyond syncSingleton's generic "cloud wins,
