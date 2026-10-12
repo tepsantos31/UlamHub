@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, Alert, Platform, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation, CompositeNavigationProp } from '@react-navigation/native';
@@ -26,7 +26,7 @@ type Nav = CompositeNavigationProp<BottomTabNavigationProp<MainTabParamList, 'Pr
 export function ProfileSettingsScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
-  const { session } = useAuth();
+  const { session, syncing } = useAuth();
   const [profile, setProfileState] = useState<ProfileState | null>(null);
   const [onboarding, setOnboardingState] = useState<OnboardingState | null>(null);
   const [settings, setSettingsState] = useState<SettingsState | null>(null);
@@ -34,27 +34,38 @@ export function ProfileSettingsScreen() {
   const [joinedKitchenCount, setJoinedKitchenCount] = useState(0);
   const [deleting, setDeleting] = useState(false);
 
+  const load = useCallback(async () => {
+    // Refresh entitlement status first — picks up a cancellation made
+    // through the App Store/Play Store's own subscription settings, so
+    // the "Renews"/"Cancelled" note below reflects reality when the
+    // user comes back to the app rather than only on next sign-in.
+    if (purchasesConfigured) await syncEntitlementToSettings().catch(() => {});
+    const [p, o, s, recipes] = await Promise.all([getProfile(), getOnboarding(), getSettings(), listRecipes()]);
+    setProfileState(p);
+    setOnboardingState(o);
+    setSettingsState(s);
+    setRecipeCount(recipes.filter((r) => r.userAdded).length);
+    if (supabaseConfigured && session) {
+      const kitchens = await getMyKitchens().catch(() => []);
+      setJoinedKitchenCount(kitchens.filter((k) => k.myRole === 'member').length);
+    } else {
+      setJoinedKitchenCount(0);
+    }
+  }, [session]);
+
+  // A background sync (e.g. right after sign-in) can finish while this
+  // screen is already mounted and focused — useFocusEffect below only
+  // re-runs on a focus *event*, not when data changes underneath it, so
+  // without this a screen already showing during sign-in would keep
+  // displaying pre-sync (empty/default) local state indefinitely.
+  useEffect(() => {
+    if (!syncing) load();
+  }, [syncing, load]);
+
   useFocusEffect(
     useCallback(() => {
-      (async () => {
-        // Refresh entitlement status first — picks up a cancellation made
-        // through the App Store/Play Store's own subscription settings, so
-        // the "Renews"/"Cancelled" note below reflects reality when the
-        // user comes back to the app rather than only on next sign-in.
-        if (purchasesConfigured) await syncEntitlementToSettings().catch(() => {});
-        const [p, o, s, recipes] = await Promise.all([getProfile(), getOnboarding(), getSettings(), listRecipes()]);
-        setProfileState(p);
-        setOnboardingState(o);
-        setSettingsState(s);
-        setRecipeCount(recipes.filter((r) => r.userAdded).length);
-        if (supabaseConfigured && session) {
-          const kitchens = await getMyKitchens().catch(() => []);
-          setJoinedKitchenCount(kitchens.filter((k) => k.myRole === 'member').length);
-        } else {
-          setJoinedKitchenCount(0);
-        }
-      })();
-    }, [session]),
+      load();
+    }, [load]),
   );
 
   if (!profile || !onboarding || !settings) return <View style={{ flex: 1, backgroundColor: colors.screenBg }} />;

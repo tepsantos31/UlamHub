@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation, CompositeNavigationProp } from '@react-navigation/native';
@@ -15,6 +15,7 @@ import { listRecipes } from '../storage/recipes';
 import { getProfile, getSettings } from '../storage/settings';
 import { canAccessRecipe, isSubscriptionActive } from '../utils/subscription';
 import { fetchTrendingRecipes, TrendingRecipe } from '../lib/sync';
+import { useAuth } from '../lib/auth';
 import { MainTabParamList, RootStackParamList } from '../navigation/types';
 
 type Nav = CompositeNavigationProp<
@@ -38,18 +39,30 @@ export function HomeScreen() {
   const [avatarInitial, setAvatarInitial] = useState('U');
   const [settings, setSettingsState] = useState<SettingsState | null>(null);
   const [trending, setTrending] = useState<TrendingRecipe[]>([]);
+  const { syncing } = useAuth();
+
+  const loadLocal = useCallback(async () => {
+    const [allRecipes, profile, currentSettings] = await Promise.all([listRecipes(), getProfile(), getSettings()]);
+    setRecipes(allRecipes);
+    setName(profile.name.split(' ')[0]);
+    setAvatarInitial(profile.avatarInitial);
+    setSettingsState(currentSettings);
+  }, []);
+
+  // A background sync (e.g. right after sign-in) can finish while this
+  // screen is already mounted and focused — useFocusEffect below only
+  // re-runs on a focus *event*, not when data changes underneath it, so
+  // without this a screen that was already showing during sign-in would
+  // keep displaying pre-sync (empty) local state until the user navigated
+  // away and back.
+  useEffect(() => {
+    if (!syncing) loadLocal();
+  }, [syncing, loadLocal]);
 
   useFocusEffect(
     useCallback(() => {
       let mounted = true;
-      (async () => {
-        const [allRecipes, profile, currentSettings] = await Promise.all([listRecipes(), getProfile(), getSettings()]);
-        if (!mounted) return;
-        setRecipes(allRecipes);
-        setName(profile.name.split(' ')[0]);
-        setAvatarInitial(profile.avatarInitial);
-        setSettingsState(currentSettings);
-      })();
+      loadLocal();
       // Separate from the block above — real community data over the
       // network shouldn't hold up the rest of the screen loading.
       fetchTrendingRecipes(6).then((t) => {
@@ -58,7 +71,7 @@ export function HomeScreen() {
       return () => {
         mounted = false;
       };
-    }, []),
+    }, [loadLocal]),
   );
 
   const byId = new Map(recipes.map((r) => [r.id, r]));
