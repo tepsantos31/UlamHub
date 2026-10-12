@@ -103,13 +103,25 @@ export async function signInWithMagicLink(email: string) {
   if (error) throw error;
 }
 
+// Supabase doesn't expose an explicit "was this just created" flag for an
+// OAuth/identity-token sign-in — created_at and last_sign_in_at landing
+// within a few seconds of each other is the standard way to detect a
+// brand-new user. Shared by both providers' signin- and signup-tab guards
+// below.
+function looksLikeNewAccount(user: { created_at?: string; last_sign_in_at?: string } | undefined): boolean {
+  const createdAt = user?.created_at ? new Date(user.created_at).getTime() : 0;
+  const lastSignInAt = user?.last_sign_in_at ? new Date(user.last_sign_in_at).getTime() : 0;
+  return createdAt > 0 && Math.abs(lastSignInAt - createdAt) < 5000;
+}
+
 // Opens the system browser for the OAuth consent screen, then exchanges the
 // ?code it redirects back with for a real session — this project uses
 // Supabase's default PKCE flow, not the older implicit (#access_token) one.
-// Supabase itself will happily create a brand-new account for a Google
-// identity it's never seen before, regardless of which button the user
-// tapped — allowAccountCreation is what actually enforces "Continue with
-// Google" (signin) vs "Sign up with Google" (signup) as distinct actions.
+// Supabase itself will happily sign straight into an identity it's seen
+// before (or create a brand-new one it hasn't) regardless of which button
+// the user tapped — allowAccountCreation is what actually enforces
+// "Continue with Google" (signin) vs "Sign up with Google" (signup) as
+// distinct actions in both directions.
 export async function signInWithGoogle(allowAccountCreation: boolean): Promise<void> {
   const redirectTo = Linking.createURL('auth/callback');
   const { data, error } = await supabase.auth.signInWithOAuth({
@@ -129,18 +141,14 @@ export async function signInWithGoogle(allowAccountCreation: boolean): Promise<v
   const { data: sessionData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
   if (exchangeError) throw exchangeError;
 
-  if (!allowAccountCreation) {
-    const user = sessionData.session?.user;
-    // Supabase doesn't expose an explicit "was this just created" flag for
-    // OAuth sign-ins — created_at and last_sign_in_at landing within a few
-    // seconds of each other is the standard way to detect a brand-new user.
-    const createdAt = user?.created_at ? new Date(user.created_at).getTime() : 0;
-    const lastSignInAt = user?.last_sign_in_at ? new Date(user.last_sign_in_at).getTime() : 0;
-    const isNewAccount = createdAt > 0 && Math.abs(lastSignInAt - createdAt) < 5000;
-    if (isNewAccount) {
-      await supabase.auth.signOut();
-      throw new Error("We couldn't find a UlamHub account for this Google account — tap \"Create account\" to sign up first.");
-    }
+  const isNewAccount = looksLikeNewAccount(sessionData.session?.user);
+  if (!allowAccountCreation && isNewAccount) {
+    await supabase.auth.signOut();
+    throw new Error("We couldn't find a UlamHub account for this Google account — tap \"Create account\" to sign up first.");
+  }
+  if (allowAccountCreation && !isNewAccount) {
+    await supabase.auth.signOut();
+    throw new Error('An UlamHub account already exists for this Google account — tap "Sign in" instead.');
   }
 }
 
@@ -161,9 +169,10 @@ async function signInWithAppleIdentityToken(identityToken: string, rawNonce: str
 }
 
 // Apple's dialog doesn't distinguish "sign in" from "sign up" the way the
-// email/password form does — a first-time Apple ID just creates an account.
-// Mirrors signInWithGoogle's allowAccountCreation guard so "Continue with
-// Apple" on the sign-in tab can't silently create a brand-new account.
+// email/password form does — it happily authenticates either way. Mirrors
+// signInWithGoogle's allowAccountCreation guard in both directions: "Continue
+// with Apple" on the sign-in tab can't silently create a brand-new account,
+// and "Sign up with Apple" can't silently sign into one that already exists.
 export async function signInWithApple(allowAccountCreation: boolean): Promise<void> {
   const rawNonce = Crypto.randomUUID();
   const hashedNonce = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawNonce);
@@ -202,17 +211,14 @@ export async function signInWithApple(allowAccountCreation: boolean): Promise<vo
 
   const session = await signInWithAppleIdentityToken(credential.identityToken, rawNonce);
 
-  if (!allowAccountCreation) {
-    const user = session?.user;
-    // Same heuristic as signInWithGoogle — Supabase doesn't expose an
-    // explicit "was this just created" flag for an identity-token sign-in.
-    const createdAt = user?.created_at ? new Date(user.created_at).getTime() : 0;
-    const lastSignInAt = user?.last_sign_in_at ? new Date(user.last_sign_in_at).getTime() : 0;
-    const isNewAccount = createdAt > 0 && Math.abs(lastSignInAt - createdAt) < 5000;
-    if (isNewAccount) {
-      await supabase.auth.signOut();
-      throw new Error('We couldn\'t find a UlamHub account for this Apple ID — tap "Create account" to sign up first.');
-    }
+  const isNewAccount = looksLikeNewAccount(session?.user);
+  if (!allowAccountCreation && isNewAccount) {
+    await supabase.auth.signOut();
+    throw new Error('We couldn\'t find a UlamHub account for this Apple ID — tap "Create account" to sign up first.');
+  }
+  if (allowAccountCreation && !isNewAccount) {
+    await supabase.auth.signOut();
+    throw new Error('An UlamHub account already exists for this Apple ID — tap "Sign in" instead.');
   }
 }
 
