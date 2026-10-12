@@ -40,13 +40,19 @@ export async function runInitialSync(): Promise<void> {
   // silent-overwrite was the likely cause of recipes "disappearing".
   const remoteRecipes = await pullRecipes();
   const local = await listRecipes();
+  console.warn('[sync] runInitialSync recipes', { remoteCount: remoteRecipes?.length ?? null, localCount: local.length });
   if (remoteRecipes && remoteRecipes.length > 0) {
     const remoteIds = new Set(remoteRecipes.map((r) => r.id));
     const localOnly = local.filter((r) => r.userAdded && !remoteIds.has(r.id));
-    await Promise.all(localOnly.map((r) => pushRecipe(r)));
+    // Write what we already have first — pulling the account's real data
+    // down to this device must not be at the mercy of also successfully
+    // pushing a few local-only extras. That push is best-effort cleanup
+    // (same as saveRecipe's own fire-and-forget push), not something that
+    // should ever be able to block the merge if it fails.
     await setJSON(KEYS.recipes, [...remoteRecipes, ...localOnly]);
+    localOnly.forEach((r) => pushRecipe(r).catch(() => {}));
   } else {
-    await Promise.all(local.map((r) => pushRecipe(r)));
+    local.forEach((r) => pushRecipe(r).catch(() => {}));
   }
 
   await syncSingleton(KEYS.plan, getPlan, pullPlan, pushPlan);
