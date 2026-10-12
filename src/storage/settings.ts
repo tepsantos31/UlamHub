@@ -31,7 +31,9 @@ function migrateNotif(notif: any): SettingsState['notif'] {
 // Placeholder identity shown before a real profile is ever saved — not real
 // user data. Like any default passed to getJSON, once something is written
 // to KEYS.profile this fallback is never consulted again for that device.
-const DEFAULT_PROFILE: ProfileState = {
+// Exported so initialSync/auth can tell "still untouched" apart from "user
+// genuinely wants to be named this" before seeding a brand-new account.
+export const DEFAULT_PROFILE: ProfileState = {
   name: 'Samantha Cruz',
   handle: '@sam.kusina',
   avatarInitial: 'S',

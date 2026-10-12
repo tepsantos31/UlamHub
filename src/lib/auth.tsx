@@ -8,6 +8,7 @@ import { supabase, supabaseConfigured } from './supabase';
 import { runInitialSync } from './initialSync';
 import { initPurchases, loginPurchases, logoutPurchases } from './purchases';
 import { ensureOwnKitchen } from './kitchen';
+import { getProfile, setProfile, DEFAULT_PROFILE } from '../storage/settings';
 
 // Lets a browser tab opened by openAuthSessionAsync close itself and hand
 // control back to the app on web; a no-op on iOS/Android.
@@ -181,6 +182,24 @@ export async function signInWithApple(allowAccountCreation: boolean): Promise<vo
   if (!credential.identityToken) {
     throw new Error('Apple sign-in did not return an identity token.');
   }
+
+  // Apple only ever hands over the real name on the device's FIRST
+  // authorization for this app — never again after that, even on a fresh
+  // reinstall. The identity token itself carries no name, so this is the
+  // only chance to capture it. Write it to local profile now, before the
+  // session gets created below — initialSync's profile step (triggered by
+  // the auth-state listener that firing the session below kicks off) reads
+  // local profile to seed a brand-new account's cloud profile, and would
+  // otherwise push the untouched "Samantha Cruz" placeholder for the same
+  // reason that was happening for Google sign-ups.
+  const appleName = [credential.fullName?.givenName, credential.fullName?.familyName].filter(Boolean).join(' ').trim();
+  if (appleName) {
+    const current = await getProfile();
+    if (current.name === DEFAULT_PROFILE.name) {
+      await setProfile({ ...current, name: appleName, avatarInitial: appleName.charAt(0).toUpperCase() });
+    }
+  }
+
   const session = await signInWithAppleIdentityToken(credential.identityToken, rawNonce);
 
   if (!allowAccountCreation) {

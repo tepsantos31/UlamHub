@@ -12,8 +12,10 @@ import { KEYS, setJSON } from '../storage/db';
 import { listRecipes } from '../storage/recipes';
 import { getPlan } from '../storage/plan';
 import { getGrocery } from '../storage/grocery';
-import { getSettings, getProfile } from '../storage/settings';
+import { getSettings, getProfile, DEFAULT_PROFILE } from '../storage/settings';
 import { getOnboarding } from '../storage/onboarding';
+import { supabase } from './supabase';
+import { ProfileState } from '../types/models';
 import {
   pushRecipe,
   pullRecipes,
@@ -51,7 +53,41 @@ export async function runInitialSync(): Promise<void> {
   await syncSingleton(KEYS.grocery, getGrocery, pullGrocery, pushGrocery);
   await syncSingleton(KEYS.settings, getSettings, pullSettings, pushSettings);
   await syncSingleton(KEYS.onboarding, getOnboarding, pullOnboarding, pushOnboarding);
-  await syncSingleton(KEYS.profile, getProfile, pullProfile, pushProfile);
+  await syncProfile();
+}
+
+// Profile needs one extra step beyond syncSingleton's generic "empty cloud ->
+// push local as the seed" — on a genuinely brand-new account, "local" is
+// usually still the untouched DEFAULT_PROFILE placeholder (nothing in the
+// onboarding quiz ever asks for a name), so pushing it verbatim means every
+// new sign-up gets stuck looking like it belongs to "Samantha Cruz". If the
+// cloud is empty AND local is still that placeholder, pull a real name from
+// the auth identity (Google's OAuth metadata; Apple's name, when Apple hands
+// it to us on first sign-in, is written into local profile earlier — see
+// signInWithApple in lib/auth.tsx — so it's already not the placeholder by
+// the time we get here) before seeding the cloud with it.
+async function syncProfile(): Promise<void> {
+  const remote = await pullProfile();
+  if (remote != null) {
+    await setJSON(KEYS.profile, remote);
+    return;
+  }
+  let local = await getProfile();
+  if (local.name === DEFAULT_PROFILE.name) {
+    local = { ...local, ...(await profileFromAuthIdentity()) };
+  }
+  await pushProfile(local);
+  await setJSON(KEYS.profile, local);
+}
+
+async function profileFromAuthIdentity(): Promise<Partial<ProfileState>> {
+  const { data } = await supabase.auth.getUser();
+  const user = data.user;
+  if (!user) return {};
+  const meta = user.user_metadata ?? {};
+  const name: string | undefined = meta.full_name || meta.name || (user.email ? user.email.split('@')[0] : undefined);
+  if (!name) return {};
+  return { name, avatarInitial: name.trim().charAt(0).toUpperCase() || DEFAULT_PROFILE.avatarInitial };
 }
 
 async function syncSingleton<T>(
