@@ -143,11 +143,11 @@ export async function signInWithGoogle(allowAccountCreation: boolean): Promise<v
 
   const isNewAccount = looksLikeNewAccount(sessionData.session?.user);
   if (!allowAccountCreation && isNewAccount) {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
     throw new Error("We couldn't find a UlamHub account for this Google account — tap \"Create account\" to sign up first.");
   }
   if (allowAccountCreation && !isNewAccount) {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
     throw new Error('An UlamHub account already exists for this Google account — tap "Sign in" instead.');
   }
 }
@@ -213,15 +213,19 @@ export async function signInWithApple(allowAccountCreation: boolean): Promise<vo
 
   const isNewAccount = looksLikeNewAccount(session?.user);
   if (!allowAccountCreation && isNewAccount) {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
     throw new Error('We couldn\'t find a UlamHub account for this Apple ID — tap "Create account" to sign up first.');
   }
   if (allowAccountCreation && !isNewAccount) {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
     throw new Error('An UlamHub account already exists for this Apple ID — tap "Sign in" instead.');
   }
 }
 
+// `local` scope ends only this device's session. The default ('global')
+// revokes the account's refresh token everywhere, which would silently sign
+// out every other device signed into the same account — not what "log out"
+// on one phone should do to a different phone.
 export async function signOut() {
-  await supabase.auth.signOut();
+  await supabase.auth.signOut({ scope: 'local' });
 }
