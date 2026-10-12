@@ -8,6 +8,7 @@
 // Deliberately simple for v1: whole-document last-writer-wins per table, no
 // field-level merge. Fine for a single small household; a fuller merge would
 // be a reasonable fast-follow if that ever becomes a real problem.
+import { Platform } from 'react-native';
 import { KEYS, setJSON } from '../storage/db';
 import { listRecipes } from '../storage/recipes';
 import { getPlan } from '../storage/plan';
@@ -40,7 +41,7 @@ export async function runInitialSync(): Promise<void> {
   // silent-overwrite was the likely cause of recipes "disappearing".
   const remoteRecipes = await pullRecipes();
   const local = await listRecipes();
-  console.warn('[sync] runInitialSync recipes', { remoteCount: remoteRecipes?.length ?? null, localCount: local.length });
+  console.warn(`[sync:${Platform.OS}] runInitialSync recipes`, { remoteCount: remoteRecipes?.length ?? null, localCount: local.length });
   if (remoteRecipes && remoteRecipes.length > 0) {
     const remoteIds = new Set(remoteRecipes.map((r) => r.id));
     const localOnly = local.filter((r) => r.userAdded && !remoteIds.has(r.id));
@@ -112,7 +113,7 @@ async function syncSingleton<T>(
 ): Promise<void> {
   const remote = await pull();
   // TEMP diagnostic — remove alongside the other temp logs in this file.
-  if (key === KEYS.settings) console.warn('[sync] syncSingleton settings', { remote });
+  if (key === KEYS.settings) console.warn(`[sync:${Platform.OS}] syncSingleton settings`, { remote });
   if (remote != null) {
     await setJSON(key, remote);
   } else {
