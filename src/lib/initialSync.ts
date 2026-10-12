@@ -65,7 +65,6 @@ export async function runInitialSync(): Promise<void> {
 async function syncRecipes(): Promise<void> {
   const remoteRecipes = await pullRecipes();
   const local = await listRecipes();
-  console.warn(`[sync:${Platform.OS}] runInitialSync recipes`, { remoteCount: remoteRecipes?.length ?? null, localCount: local.length });
   if (remoteRecipes && remoteRecipes.length > 0) {
     const remoteIds = new Set(remoteRecipes.map((r) => r.id));
     const localOnly = local.filter((r) => r.userAdded && !remoteIds.has(r.id));
@@ -130,8 +129,6 @@ async function syncSingleton<T>(
   push: (value: T) => Promise<void>,
 ): Promise<void> {
   const remote = await pull();
-  // TEMP diagnostic — remove alongside the other temp logs in this file.
-  if (key === KEYS.settings) console.warn(`[sync:${Platform.OS}] syncSingleton settings`, { remote });
   if (remote != null) {
     await setJSON(key, remote);
   } else {

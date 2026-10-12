@@ -1,4 +1,3 @@
-import { Platform } from 'react-native';
 import { supabase, supabaseConfigured } from './supabase';
 import { Recipe, RecipePreview, PlanDay, GroceryGroup, SettingsState, OnboardingState, ProfileState } from '../types/models';
 
@@ -82,16 +81,8 @@ export async function uploadRecipePhoto(recipe: Recipe): Promise<string | null> 
  * into your local list. */
 export async function pullRecipes(): Promise<Recipe[] | null> {
   const ctx = await getContext();
-  if (!ctx) {
-    console.warn(`[sync:${Platform.OS}] pullRecipes: no session context, skipping`);
-    return null;
-  }
+  if (!ctx) return null;
   const { data, error } = await supabase.from('recipes').select('data').eq('owner_id', ctx.userId);
-  // TEMP diagnostic — remove once the "recipes not pulling down" report is
-  // resolved. error is never surfaced anywhere else in this path, and an
-  // RLS mismatch returns an empty (not null/error) result, so both are easy
-  // to miss silently.
-  console.warn(`[sync:${Platform.OS}] pullRecipes`, { userId: ctx.userId, error: error?.message ?? null, rowCount: data?.length ?? null });
   if (error || !data) return null;
   return data.map((row) => row.data as Recipe);
 }
