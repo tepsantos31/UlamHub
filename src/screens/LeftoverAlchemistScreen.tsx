@@ -12,6 +12,7 @@ import { PillButton } from '../components/PillButton';
 import { PremiumGate } from '../components/PremiumGate';
 import { Chip } from '../components/Chip';
 import { CloseIcon } from '../components/Icon';
+import { AIDisclosureNote } from '../components/AIDisclosureNote';
 import { leftoverAlchemist } from '../api/client';
 import { getSettings } from '../storage/settings';
 import { isSubscriptionActive } from '../utils/subscription';
@@ -148,6 +149,7 @@ export function LeftoverAlchemistScreen({ navigation }: Props) {
         style={styles.textInput}
       />
       <PillButton label={t('leftoverAlchemist.workYourMagic')} onPress={run} disabled={!canSubmit} style={{ marginTop: 12 }} />
+      <AIDisclosureNote />
 
       {loading && (
         <View style={styles.loadingBox}>

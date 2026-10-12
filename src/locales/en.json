@@ -8,7 +8,8 @@
     "ok": "OK",
     "back": "Back",
     "loading": "Loading…",
-    "error": "Something went wrong — please try again."
+    "error": "Something went wrong — please try again.",
+    "aiDisclosure": "Photos and text here are sent to OpenAI to generate your result."
   },
   "profile": {
     "title": "Profile",
@@ -218,6 +219,7 @@
     "carbs": "Carbs",
     "fat": "Fat",
     "sodium": "Sodium",
+    "nutritionCaution": "Estimated, not verified medical advice — always check for allergens yourself.",
     "askAIToRemix": "Ask AI to remix",
     "aiActions": {
       "substituteIngredient": "Substitute an ingredient",

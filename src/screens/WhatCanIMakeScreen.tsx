@@ -12,6 +12,7 @@ import { PillButton } from '../components/PillButton';
 import { PremiumGate } from '../components/PremiumGate';
 import { Chip } from '../components/Chip';
 import { CloseIcon } from '../components/Icon';
+import { AIDisclosureNote } from '../components/AIDisclosureNote';
 import { whatCanIMake, ExtractedRecipe } from '../api/client';
 import { getSettings } from '../storage/settings';
 import { isSubscriptionActive } from '../utils/subscription';
@@ -260,6 +261,7 @@ export function WhatCanIMakeScreen({ navigation }: Props) {
             style={styles.textInput}
           />
           <PillButton label={t('whatCanIMake.suggestADish')} onPress={() => generate(false)} disabled={!canSubmit} loading={loading} style={{ marginTop: 12 }} />
+          <AIDisclosureNote />
         </>
       )}
       </ScrollView>

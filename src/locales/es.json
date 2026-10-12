@@ -8,7 +8,8 @@
     "ok": "Aceptar",
     "back": "Atrás",
     "loading": "Cargando…",
-    "error": "Algo salió mal — inténtalo de nuevo."
+    "error": "Algo salió mal — inténtalo de nuevo.",
+    "aiDisclosure": "Las fotos y el texto que envíes aquí se mandan a OpenAI para generar tu resultado."
   },
   "profile": {
     "title": "Perfil",
@@ -218,6 +219,7 @@
     "carbs": "Carbohidratos",
     "fat": "Grasa",
     "sodium": "Sodio",
+    "nutritionCaution": "Es un estimado, no un consejo médico verificado — siempre revisa los alérgenos tú mismo.",
     "askAIToRemix": "Pídele a la IA que la transforme",
     "aiActions": {
       "substituteIngredient": "Sustituir un ingrediente",

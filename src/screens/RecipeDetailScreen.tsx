@@ -610,6 +610,7 @@ export function RecipeDetailScreen({ route, navigation }: Props) {
               </View>
             ))}
           </View>
+          <Text style={styles.nutritionCaution}>{t('recipeDetail.nutritionCaution')}</Text>
 
           <Text style={styles.h2}>{t('recipeDetail.askAIToRemix')}</Text>
           <View style={styles.remixRow}>
@@ -779,6 +780,7 @@ const styles = StyleSheet.create({
   nutritionTile: { flex: 1, backgroundColor: colors.white, borderRadius: 14, padding: 13, alignItems: 'center' },
   nutritionVal: { fontFamily: fonts.heading, fontSize: 16, color: colors.ink },
   nutritionLabel: { fontSize: 10, color: colors.secondaryText, fontFamily: fonts.bodySemiBold, marginTop: 2 },
+  nutritionCaution: { fontSize: 11.5, lineHeight: 16, color: colors.tertiaryText, marginTop: 10 },
   remixRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
   remixChip: { paddingHorizontal: 15, paddingVertical: 10, borderRadius: 14, borderWidth: 1.5, borderColor: 'rgba(23,137,123,0.35)', backgroundColor: colors.white },
   remixChipText: { fontFamily: fonts.bodySemiBold, fontSize: 13, color: colors.mintText },

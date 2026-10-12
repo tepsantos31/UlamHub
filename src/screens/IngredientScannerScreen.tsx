@@ -10,6 +10,7 @@ import { Screen } from '../components/Screen';
 import { HeaderBar } from '../components/HeaderBar';
 import { PillButton } from '../components/PillButton';
 import { PremiumGate } from '../components/PremiumGate';
+import { AIDisclosureNote } from '../components/AIDisclosureNote';
 import { scanIngredient, ScannedIngredient } from '../api/client';
 import { getSettings } from '../storage/settings';
 import { isSubscriptionActive } from '../utils/subscription';
@@ -92,6 +93,7 @@ export function IngredientScannerScreen({ navigation }: Props) {
           <Text style={styles.actionLabel}>{t('recipeDetail.alerts.chooseFromLibrary')}</Text>
         </Pressable>
       </View>
+      <AIDisclosureNote />
 
       {loading && (
         <View style={styles.loadingBox}>

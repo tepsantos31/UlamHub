@@ -49,7 +49,7 @@ export async function pushRecipe(recipe: Recipe): Promise<void> {
 }
 
 /** Uploads a recipe's local photo (a file:// URI from the picker, or a
- * data: URI from AI generation) to Supabase Storage and returns its public
+ * data: URI pulled from the source post/video on link import) to Supabase Storage and returns its public
  * URL — or null if there's nothing to do (no photo, it's already a remote
  * URL, or there's no signed-in session to upload as). Keyed by owner +
  * recipe id, so re-uploading for the same recipe just overwrites the old
