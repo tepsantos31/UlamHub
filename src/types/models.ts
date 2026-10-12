@@ -104,6 +104,22 @@ export interface Recipe {
   savedFromShare?: boolean; // true if this was saved via a share link rather than created/imported directly
 }
 
+/** What a Shared Kitchen member sees before their copy request is approved —
+ * enough to decide whether to request it (RecipeCard's fields), but no
+ * ingredients/steps/nutrition. Mirrors what `kitchen_member_recipe_previews`
+ * actually returns (see supabase/add_kitchen_recipe_previews.sql). */
+export interface RecipePreview {
+  id: string;
+  name: string;
+  country: Country | string;
+  type: string;
+  time: number;
+  kcal: number;
+  rating: number;
+  budget: Budget;
+  photoUri?: string;
+}
+
 export interface PlanDay {
   day: string; // Mon, Tue...
   date: string; // day-of-month

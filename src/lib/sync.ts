@@ -1,5 +1,5 @@
 import { supabase, supabaseConfigured } from './supabase';
-import { Recipe, PlanDay, GroceryGroup, SettingsState, OnboardingState, ProfileState } from '../types/models';
+import { Recipe, RecipePreview, PlanDay, GroceryGroup, SettingsState, OnboardingState, ProfileState } from '../types/models';
 
 interface SyncContext {
   userId: string;
@@ -76,8 +76,9 @@ export async function uploadRecipePhoto(recipe: Recipe): Promise<string | null> 
 }
 
 /** Only this account's own recipes — kitchen crew-mates' recipes live in
- * their own kitchen and are fetched on demand via fetchKitchenMemberRecipes,
- * not merged into your local list. */
+ * their own kitchen and are fetched on demand via
+ * fetchKitchenMemberRecipePreviews/fetchApprovedKitchenRecipe, not merged
+ * into your local list. */
 export async function pullRecipes(): Promise<Recipe[] | null> {
   const ctx = await getContext();
   if (!ctx) return null;
@@ -86,14 +87,37 @@ export async function pullRecipes(): Promise<Recipe[] | null> {
   return data.map((row) => row.data as Recipe);
 }
 
-/** A specific kitchen crew-mate's recipes, in full — access is gated purely
- * by kitchen_members existing (which under the approval-based join flow only
- * happens once both sides are mutually connected); RLS enforces this. */
-export async function fetchKitchenMemberRecipes(memberId: string): Promise<Recipe[]> {
+/** A specific kitchen crew-mate's recipes, preview-only (no ingredients/
+ * steps/nutrition) — any kitchen member can browse these. Full detail only
+ * unlocks once a recipe_request for that recipe is approved (see
+ * fetchApprovedKitchenRecipe), enforced by kitchen_member_recipe_previews'
+ * own membership check and by the tightened `recipes` RLS policy. */
+export async function fetchKitchenMemberRecipePreviews(memberId: string): Promise<RecipePreview[]> {
   if (!supabaseConfigured) return [];
-  const { data, error } = await supabase.from('recipes').select('data').eq('owner_id', memberId);
+  const { data, error } = await supabase.rpc('kitchen_member_recipe_previews', { member_id: memberId });
   if (error || !data) return [];
-  return data.map((row) => row.data as Recipe);
+  return data.map((row: any) => ({
+    id: row.id,
+    name: row.name,
+    country: row.country,
+    type: row.type,
+    time: row.time,
+    kcal: row.kcal,
+    rating: row.rating,
+    budget: row.budget,
+    photoUri: row.photo_uri ?? undefined,
+  }));
+}
+
+/** Full recipe data for a specific kitchen crew-mate's recipe — only
+ * succeeds once an approved recipe_request exists for this (recipe, owner,
+ * requester) combination; RLS is the actual gate, this just does the fetch
+ * once that gate is open (e.g. right before copying it into your cookbook). */
+export async function fetchApprovedKitchenRecipe(recipeId: string, ownerId: string): Promise<Recipe | null> {
+  if (!supabaseConfigured) return null;
+  const { data, error } = await supabase.from('recipes').select('data').eq('id', recipeId).eq('owner_id', ownerId).maybeSingle();
+  if (error || !data) return null;
+  return data.data as Recipe;
 }
 
 // ---- sharing a single recipe via a public link ----
@@ -171,7 +195,7 @@ export async function fetchTrendingRecipes(limit = 10): Promise<TrendingRecipe[]
 }
 
 // ---- meal plan & grocery list — personal to this account, never shared
-// with a kitchen crew (only recipes are; see fetchKitchenMemberRecipes) ----
+// with a kitchen crew (only recipes are; see fetchKitchenMemberRecipePreviews) ----
 
 async function pushOwn(table: string, column: string, value: unknown) {
   const ctx = await getContext();

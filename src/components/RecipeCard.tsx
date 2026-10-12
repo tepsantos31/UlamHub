@@ -5,8 +5,13 @@ import { Recipe } from '../types/models';
 import { PlaceholderImage } from './PlaceholderImage';
 import { HeartIcon } from './Icon';
 
+// Pick<> rather than the full Recipe so a lightweight RecipePreview (no
+// ingredients/steps — see MemberKitchenScreen) can be passed in too; this
+// component never reads anything beyond these fields.
+type RecipeCardData = Pick<Recipe, 'photoUri' | 'photoAsset' | 'country' | 'name' | 'time' | 'rating' | 'budget'>;
+
 interface Props {
-  recipe: Recipe;
+  recipe: RecipeCardData;
   onPress: () => void;
   width?: number;
   imageHeight?: number;

@@ -9,11 +9,11 @@ import { Screen } from '../components/Screen';
 import { HeaderBar } from '../components/HeaderBar';
 import { PillButton } from '../components/PillButton';
 import { RecipeCard } from '../components/RecipeCard';
-import { Recipe } from '../types/models';
-import { fetchKitchenMemberRecipes } from '../lib/sync';
+import { Recipe, RecipePreview, SettingsState } from '../types/models';
+import { fetchKitchenMemberRecipePreviews, fetchApprovedKitchenRecipe } from '../lib/sync';
 import { makeRecipeId, saveRecipe, listRecipes } from '../storage/recipes';
 import { getSettings } from '../storage/settings';
-import { canAddRecipe, FREE_RECIPE_CAP } from '../utils/subscription';
+import { canAddRecipe, isSubscriptionActive, FREE_RECIPE_CAP } from '../utils/subscription';
 import { requestRecipe, getMyRequestStatus, getMyApprovedRequests, clearRequest, RecipeRequest } from '../lib/kitchen';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MemberKitchen'>;
@@ -28,25 +28,29 @@ async function copyIntoCookbook(recipe: Recipe): Promise<string> {
 export function MemberKitchenScreen({ route, navigation }: Props) {
   const { t } = useTranslation();
   const { memberId, kitchenName } = route.params;
-  const [recipes, setRecipes] = useState<Recipe[] | null>(null);
-  const [selected, setSelected] = useState<Recipe | null>(null);
+  const [recipes, setRecipes] = useState<RecipePreview[] | null>(null);
+  const [selected, setSelected] = useState<RecipePreview | null>(null);
   const [request, setRequest] = useState<RecipeRequest | null | undefined>(undefined); // undefined = loading
+  const [settings, setSettingsState] = useState<SettingsState | null>(null);
   const [busy, setBusy] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       let mounted = true;
-      fetchKitchenMemberRecipes(memberId).then((list) => {
+      getSettings().then((s) => {
+        if (mounted) setSettingsState(s);
+      });
+      fetchKitchenMemberRecipePreviews(memberId).then((list) => {
         if (mounted) setRecipes(list);
       });
       // Any request this account sent this crew-mate that got approved while
-      // we weren't looking: finish the copy now and clean up the row.
+      // we weren't looking: finish the copy now and clean up the row. Full
+      // data is fetched per-request now — the preview list above never has
+      // ingredients/steps to copy from.
       getMyApprovedRequests().then(async (approved) => {
         const mine = approved.filter((a) => a.toUserId === memberId);
-        if (mine.length === 0) return;
-        const list = await fetchKitchenMemberRecipes(memberId);
         for (const r of mine) {
-          const src = list.find((rec) => rec.id === r.recipeId);
+          const src = await fetchApprovedKitchenRecipe(r.recipeId, memberId);
           if (src) await copyIntoCookbook(src);
           await clearRequest(r.id);
         }
@@ -57,7 +61,7 @@ export function MemberKitchenScreen({ route, navigation }: Props) {
     }, [memberId]),
   );
 
-  const openRecipe = async (r: Recipe) => {
+  const openRecipe = async (r: RecipePreview) => {
     setSelected(r);
     setRequest(undefined);
     const status = await getMyRequestStatus(r.id, memberId);
@@ -66,7 +70,18 @@ export function MemberKitchenScreen({ route, navigation }: Props) {
 
   const sendRequest = async () => {
     if (!selected) return;
-    const [existing, settings] = await Promise.all([listRecipes(), getSettings()]);
+    if (!settings || !isSubscriptionActive(settings)) {
+      Alert.alert(
+        t('memberKitchen.alerts.premiumRequiredTitle'),
+        t('memberKitchen.alerts.premiumRequiredBody'),
+        [
+          { text: t('recipeDetail.alerts.notNow'), style: 'cancel' },
+          { text: t('recipeDetail.alerts.goPremium'), onPress: () => navigation.navigate('Paywall') },
+        ],
+      );
+      return;
+    }
+    const existing = await listRecipes();
     if (!canAddRecipe(settings, existing)) {
       Alert.alert(
         t('addRecipeReview.alerts.recipeLimitTitle'),
@@ -94,10 +109,14 @@ export function MemberKitchenScreen({ route, navigation }: Props) {
     if (!selected || !request) return;
     setBusy(true);
     try {
-      const id = await copyIntoCookbook(selected);
+      const full = await fetchApprovedKitchenRecipe(selected.id, memberId);
+      if (!full) throw new Error(t('kitchen.alerts.somethingWentWrong'));
+      const id = await copyIntoCookbook(full);
       await clearRequest(request.id);
       setSelected(null);
       navigation.navigate('RecipeDetail', { recipeId: id });
+    } catch (e: any) {
+      Alert.alert(t('kitchen.alerts.couldNotRespondTitle'), e?.message ?? t('kitchen.alerts.somethingWentWrong'));
     } finally {
       setBusy(false);
     }
@@ -112,28 +131,7 @@ export function MemberKitchenScreen({ route, navigation }: Props) {
           <Text style={[styles.badge, { backgroundColor: colors.gold, color: colors.goldText }]}>{selected.type}</Text>
         </View>
         <Text style={styles.detailName}>{selected.name}</Text>
-        <Text style={styles.detailSub}>
-          {t('memberKitchen.detailSub', { time: selected.time, count: selected.ingredients.length, kitchen: kitchenName })}
-        </Text>
-
-        <Text style={styles.h2}>{t('recipeDetail.ingredients')}</Text>
-        <View style={{ gap: 8 }}>
-          {selected.ingredients.map((ing, i) => (
-            <Text key={i} style={styles.ingredientLine}>
-              • {ing.qty} {ing.unit} {ing.name}
-            </Text>
-          ))}
-        </View>
-
-        <Text style={styles.h2}>{t('recipeDetail.steps')}</Text>
-        <View style={{ gap: 14 }}>
-          {selected.steps.map((s) => (
-            <View key={s.n} style={styles.stepRow}>
-              <Text style={styles.stepNum}>{s.n}</Text>
-              <Text style={styles.stepText}>{s.text}</Text>
-            </View>
-          ))}
-        </View>
+        <Text style={styles.detailSub}>{t('memberKitchen.detailSub', { time: selected.time, kitchen: kitchenName })}</Text>
 
         {request === undefined ? (
           <ActivityIndicator color={colors.tealDark} style={{ marginTop: 24 }} />
@@ -151,7 +149,10 @@ export function MemberKitchenScreen({ route, navigation }: Props) {
             <PillButton label={t('memberKitchen.requestAgain')} onPress={sendRequest} loading={busy} variant="secondary" style={{ marginTop: 10 }} />
           </>
         ) : (
-          <PillButton label={busy ? t('memberKitchen.sending') : t('memberKitchen.requestToShare')} onPress={sendRequest} loading={busy} style={{ marginTop: 24 }} />
+          <>
+            <Text style={styles.previewHint}>{t('memberKitchen.previewHint')}</Text>
+            <PillButton label={busy ? t('memberKitchen.sending') : t('memberKitchen.requestToShare')} onPress={sendRequest} loading={busy} style={{ marginTop: 16 }} />
+          </>
         )}
       </Screen>
     );
@@ -189,11 +190,7 @@ const styles = StyleSheet.create({
   badge: { fontSize: 11, fontFamily: fonts.bodyExtraBold, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 9, overflow: 'hidden' },
   detailName: { fontFamily: fonts.heading, fontSize: 26, color: colors.ink, letterSpacing: -0.3, marginTop: 12 },
   detailSub: { fontSize: 13, color: colors.secondaryText, marginTop: 8, fontFamily: fonts.bodySemiBold },
-  h2: { fontFamily: fonts.heading, fontSize: 18, color: colors.ink, marginTop: 24, marginBottom: 10 },
-  ingredientLine: { fontSize: 14, color: colors.ink, lineHeight: 21 },
-  stepRow: { flexDirection: 'row', gap: 10 },
-  stepNum: { width: 22, fontFamily: fonts.bodyBold, color: colors.tealLink, fontSize: 14 },
-  stepText: { flex: 1, fontSize: 14, color: colors.ink, lineHeight: 21 },
+  previewHint: { fontSize: 13.5, color: colors.sageMuted, lineHeight: 20, marginTop: 28 },
   statusPill: { marginTop: 24, borderRadius: radii.lg, paddingVertical: 13, paddingHorizontal: 16, alignItems: 'center' },
   statusPillText: { fontSize: 13, fontFamily: fonts.bodyExtraBold, textAlign: 'center' },
 });

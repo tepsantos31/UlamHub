@@ -503,9 +503,9 @@
   },
   "kitchen": {
     "title": "Mi Cocina",
-    "premiumFeatureTitle": "Cocina es una función Premium",
-    "premiumFeatureBody": "Unirte a otras cocinas con tu grupo está disponible para miembros Premium de UlamHub.",
-    "subtitle": "Únete a otros por solicitud — una vez que el propietario la apruebe, podrás ver sus recetas y solicitar agregarlas a las tuyas.",
+    "premiumFeatureTitle": "Ser anfitrión es una función Premium",
+    "premiumFeatureBody": "Crear tu propia cocina, compartir un código de invitación y aprobar quién se une está disponible para miembros Premium de UlamHub. Unirte y explorar la cocina de alguien más es gratis.",
+    "subtitle": "Únete a otros por solicitud — una vez que el propietario la apruebe, podrás ver sus recetas. Solicitar agregar una a tu propio recetario requiere UlamHub Premium.",
     "requests": "Solicitudes",
     "wantsToJoinMiddle": "quiere unirse a",
     "wantsToAddRecipeMiddle": "quiere agregar",
@@ -550,7 +550,8 @@
     "notFoundBody": "El enlace de invitación puede no ser válido."
   },
   "memberKitchen": {
-    "detailSub": "⏱ {{time}}m · {{count}} ingredientes · de {{kitchen}}",
+    "detailSub": "⏱ {{time}}m · de {{kitchen}}",
+    "previewHint": "Solicita esta receta para ver los ingredientes y pasos completos, y agregarla a tu propio recetario.",
     "waitingForApproval": "Solicitado — esperando que {{kitchen}} apruebe",
     "adding": "Agregando…",
     "addToCookbook": "Agregar a mi recetario",
@@ -558,7 +559,11 @@
     "requestAgain": "Solicitar de nuevo",
     "sending": "Enviando…",
     "requestToShare": "Solicitar compartir",
-    "emptyBody": "Aún no hay recetas de {{kitchen}} — solo las recetas que crearon, importaron o guardaron aparecen aquí, no la biblioteca de cocinas incorporada que todos ya tienen."
+    "emptyBody": "Aún no hay recetas de {{kitchen}} — solo las recetas que crearon, importaron o guardaron aparecen aquí, no la biblioteca de cocinas incorporada que todos ya tienen.",
+    "alerts": {
+      "premiumRequiredTitle": "Se necesita Premium para solicitar",
+      "premiumRequiredBody": "Explorar es gratis, pero agregar una receta a tu propio recetario requiere UlamHub Premium."
+    }
   },
   "sharedRecipe": {
     "title": "Receta compartida",

@@ -503,9 +503,9 @@
   },
   "kitchen": {
     "title": "My Kitchen",
-    "premiumFeatureTitle": "Kitchen is a Premium feature",
-    "premiumFeatureBody": "Joining other kitchens with your crew is available to UlamHub Premium members.",
-    "subtitle": "Join others by request — once the owner approves, you can browse their recipes and request to add them to yours.",
+    "premiumFeatureTitle": "Hosting is a Premium feature",
+    "premiumFeatureBody": "Setting up your own kitchen, sharing an invite code, and approving who joins is available to UlamHub Premium members. Joining and browsing someone else's kitchen is free.",
+    "subtitle": "Join others by request — once the owner approves, you can browse their recipes. Requesting to add one to your own cookbook needs UlamHub Premium.",
     "requests": "Requests",
     "wantsToJoinMiddle": "wants to join",
     "wantsToAddRecipeMiddle": "wants to add",
@@ -550,7 +550,8 @@
     "notFoundBody": "The invite link may be invalid."
   },
   "memberKitchen": {
-    "detailSub": "⏱ {{time}}m · {{count}} ingredients · from {{kitchen}}",
+    "detailSub": "⏱ {{time}}m · from {{kitchen}}",
+    "previewHint": "Request this recipe to see the full ingredients and steps, and add it to your own cookbook.",
     "waitingForApproval": "Requested — waiting for {{kitchen}} to approve",
     "adding": "Adding…",
     "addToCookbook": "Add to my cookbook",
@@ -558,7 +559,11 @@
     "requestAgain": "Request again",
     "sending": "Sending…",
     "requestToShare": "Request to Share",
-    "emptyBody": "No recipes from {{kitchen}} yet — only recipes they've created, imported, or saved show up here, not the built-in cuisine library everyone already has."
+    "emptyBody": "No recipes from {{kitchen}} yet — only recipes they've created, imported, or saved show up here, not the built-in cuisine library everyone already has.",
+    "alerts": {
+      "premiumRequiredTitle": "Premium needed to request",
+      "premiumRequiredBody": "Browsing is free, but adding a recipe to your own cookbook needs UlamHub Premium."
+    }
   },
   "sharedRecipe": {
     "title": "Shared recipe",

@@ -188,18 +188,11 @@ export function KitchenScreen({ navigation }: Props) {
 
       {loading ? (
         <ActivityIndicator color={colors.tealDark} style={{ marginTop: 40 }} />
-      ) : !subscribed ? (
-        <PremiumGate
-          icon="👨‍🍳"
-          title={t('kitchen.premiumFeatureTitle')}
-          body={t('kitchen.premiumFeatureBody')}
-          onGoPremium={() => navigation.navigate('Paywall')}
-        />
       ) : (
         <>
           <Text style={styles.subtitle}>{t('kitchen.subtitle')}</Text>
 
-          {(joinRequests.length > 0 || recipeRequests.length > 0 || leaveNotices.length > 0) && (
+          {subscribed && (joinRequests.length > 0 || recipeRequests.length > 0 || leaveNotices.length > 0) && (
             <>
               <SectionLabel>{t('kitchen.requests')}</SectionLabel>
               <View style={{ gap: 10 }}>
@@ -267,7 +260,14 @@ export function KitchenScreen({ navigation }: Props) {
           )}
 
           <SectionLabel>{t('kitchen.yourKitchen')}</SectionLabel>
-          {ownedKitchen ? (
+          {!subscribed ? (
+            <PremiumGate
+              icon="👨‍🍳"
+              title={t('kitchen.premiumFeatureTitle')}
+              body={t('kitchen.premiumFeatureBody')}
+              onGoPremium={() => navigation.navigate('Paywall')}
+            />
+          ) : ownedKitchen ? (
             <View style={[styles.card, shadow.soft]}>
               {editingName ? (
                 <View style={styles.nameEditRow}>
