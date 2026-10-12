@@ -81,8 +81,16 @@ export async function uploadRecipePhoto(recipe: Recipe): Promise<string | null> 
  * into your local list. */
 export async function pullRecipes(): Promise<Recipe[] | null> {
   const ctx = await getContext();
-  if (!ctx) return null;
+  if (!ctx) {
+    console.warn('[sync] pullRecipes: no session context, skipping');
+    return null;
+  }
   const { data, error } = await supabase.from('recipes').select('data').eq('owner_id', ctx.userId);
+  // TEMP diagnostic — remove once the "recipes not pulling down" report is
+  // resolved. error is never surfaced anywhere else in this path, and an
+  // RLS mismatch returns an empty (not null/error) result, so both are easy
+  // to miss silently.
+  console.warn('[sync] pullRecipes', { userId: ctx.userId, error: error?.message ?? null, rowCount: data?.length ?? null });
   if (error || !data) return null;
   return data.map((row) => row.data as Recipe);
 }
