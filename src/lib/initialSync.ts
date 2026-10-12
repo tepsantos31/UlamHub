@@ -56,28 +56,36 @@ export async function runInitialSync(): Promise<void> {
   await syncProfile();
 }
 
-// Profile needs one extra step beyond syncSingleton's generic "empty cloud ->
-// push local as the seed" — on a genuinely brand-new account, "local" is
-// usually still the untouched DEFAULT_PROFILE placeholder (nothing in the
-// onboarding quiz ever asks for a name), so pushing it verbatim means every
-// new sign-up gets stuck looking like it belongs to "Samantha Cruz". If the
-// cloud is empty AND local is still that placeholder, pull a real name from
-// the auth identity (Google's OAuth metadata; Apple's name, when Apple hands
-// it to us on first sign-in, is written into local profile earlier — see
-// signInWithApple in lib/auth.tsx — so it's already not the placeholder by
-// the time we get here) before seeding the cloud with it.
+// Profile needs one extra step beyond syncSingleton's generic "cloud wins,
+// empty cloud -> push local as the seed":
+//
+// 1. Supabase actually auto-creates a `profiles` row via an on-signup DB
+//    trigger (see handle_new_user() in supabase/schema.sql) the instant the
+//    auth user is created — so `pullProfile()` is essentially NEVER null for
+//    a real account, even a brand-new one. The plain "empty cloud" case
+//    below is mostly a belt-and-suspenders fallback, not the common path.
+// 2. Separately, this app's own local DEFAULT_PROFILE placeholder
+//    ("Samantha Cruz" — nothing in the onboarding quiz ever asks for a real
+//    name) can end up PUSHED to the cloud as a real value — e.g. from a
+//    signup that happened before this self-heal existed, or any other path
+//    where local state got synced before being personalized. Once that's
+//    sitting in the cloud, "cloud wins" alone means every future sign-in on
+//    any device for that account keeps re-downloading the placeholder
+//    forever — it never heals on its own.
+//
+// So: whenever what we're about to treat as "the profile" (remote if it
+// exists, local otherwise) is still literally the placeholder name, try to
+// replace it with something real from the auth identity before using it —
+// regardless of whether that placeholder came from the cloud or from local.
 async function syncProfile(): Promise<void> {
   const remote = await pullProfile();
-  if (remote != null) {
-    await setJSON(KEYS.profile, remote);
-    return;
+  let profile = remote ?? (await getProfile());
+  if (profile.name === DEFAULT_PROFILE.name) {
+    const better = await profileFromAuthIdentity();
+    if (better.name) profile = { ...profile, ...better };
   }
-  let local = await getProfile();
-  if (local.name === DEFAULT_PROFILE.name) {
-    local = { ...local, ...(await profileFromAuthIdentity()) };
-  }
-  await pushProfile(local);
-  await setJSON(KEYS.profile, local);
+  if (profile !== remote) await pushProfile(profile);
+  await setJSON(KEYS.profile, profile);
 }
 
 async function profileFromAuthIdentity(): Promise<Partial<ProfileState>> {
