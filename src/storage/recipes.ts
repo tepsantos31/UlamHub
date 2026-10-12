@@ -24,7 +24,10 @@ export async function listRecipes(): Promise<Recipe[]> {
   // default value here, and saveRecipe() baked them into storage permanently
   // the first time a user saved anything. Strip any of those bundled ids out
   // so only recipes the user actually added ever show up.
-  return stored.filter((r) => !SEED_BY_ID.has(r.id)).map(migrateRecipe);
+  const result = stored.filter((r) => !SEED_BY_ID.has(r.id)).map(migrateRecipe);
+  // TEMP diagnostic — remove once the "recipes not showing" report is resolved.
+  console.warn('[storage] listRecipes', { storedCount: stored.length, returnedCount: result.length });
+  return result;
 }
 
 export async function getRecipe(id: string): Promise<Recipe | undefined> {
