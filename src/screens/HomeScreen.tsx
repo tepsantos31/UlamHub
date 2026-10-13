@@ -15,6 +15,7 @@ import { listRecipes } from '../storage/recipes';
 import { getProfile, getSettings } from '../storage/settings';
 import { canAccessRecipe, isSubscriptionActive } from '../utils/subscription';
 import { fetchTrendingRecipes, TrendingRecipe } from '../lib/sync';
+import { getMyKitchens } from '../lib/kitchen';
 import { useAuth } from '../lib/auth';
 import { MainTabParamList, RootStackParamList } from '../navigation/types';
 
@@ -39,6 +40,7 @@ export function HomeScreen() {
   const [avatarInitial, setAvatarInitial] = useState('U');
   const [settings, setSettingsState] = useState<SettingsState | null>(null);
   const [trending, setTrending] = useState<TrendingRecipe[]>([]);
+  const [kitchenName, setKitchenName] = useState<string | null>(null);
   const { syncing } = useAuth();
 
   const loadLocal = useCallback(async () => {
@@ -63,11 +65,16 @@ export function HomeScreen() {
     useCallback(() => {
       let mounted = true;
       loadLocal();
-      // Separate from the block above — real community data over the
-      // network shouldn't hold up the rest of the screen loading.
+      // Both separate from the block above — neither a community-data fetch
+      // nor a kitchen lookup should hold up the rest of the screen loading.
       fetchTrendingRecipes(6).then((t) => {
         if (mounted) setTrending(t);
       });
+      getMyKitchens()
+        .then((ks) => {
+          if (mounted) setKitchenName(ks.find((k) => k.myRole === 'owner')?.name ?? null);
+        })
+        .catch(() => {});
       return () => {
         mounted = false;
       };
@@ -193,7 +200,7 @@ export function HomeScreen() {
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.kitchenTitle}>{t('home.kitchen')}</Text>
-          <Text style={styles.kitchenBody}>{t('home.kitchenBody')}</Text>
+          <Text style={styles.kitchenBody}>{kitchenName ?? t('home.kitchenBody')}</Text>
         </View>
         <Text style={styles.kitchenArrow}>→</Text>
       </Pressable>

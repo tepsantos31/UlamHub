@@ -184,7 +184,7 @@ export function KitchenScreen({ navigation }: Props) {
 
   return (
     <Screen withTabBarSpace={false}>
-      <HeaderBar title={t('kitchen.title')} onBack={() => navigation.goBack()} />
+      <HeaderBar title={ownedKitchen?.name ?? t('kitchen.title')} onBack={() => navigation.goBack()} />
 
       {loading ? (
         <ActivityIndicator color={colors.tealDark} style={{ marginTop: 40 }} />
