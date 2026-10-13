@@ -199,8 +199,8 @@ export function HomeScreen() {
           <Text style={{ fontSize: 20 }}>👨‍🍳</Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.kitchenTitle}>{t('home.kitchen')}</Text>
-          <Text style={styles.kitchenBody}>{kitchenName ?? t('home.kitchenBody')}</Text>
+          <Text style={styles.kitchenTitle}>{kitchenName ?? t('home.kitchen')}</Text>
+          <Text style={styles.kitchenBody}>{t('home.kitchenBody')}</Text>
         </View>
         <Text style={styles.kitchenArrow}>→</Text>
       </Pressable>
