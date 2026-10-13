@@ -63,9 +63,25 @@ export async function runInitialSync(): Promise<void> {
 // remote as the sole source of truth. That silent-overwrite was the likely
 // cause of recipes "disappearing".
 async function syncRecipes(): Promise<void> {
-  const remoteRecipes = await pullRecipes();
+  const pulled = await pullRecipes();
   const local = await listRecipes();
-  if (remoteRecipes && remoteRecipes.length > 0) {
+  if (pulled && pulled.length > 0) {
+    // A row whose photo upload never finished (app closed mid-upload,
+    // network drop) can still have the full base64 image embedded as
+    // photoUri instead of a real URL — multiple MB, since this is exactly
+    // the "database or disk is full" report traced back to five such rows,
+    // each 2+ MB, blowing past Android's per-write local-storage limits on
+    // a batch write regardless of how much free space the device actually
+    // has. Treat it as "no photo yet" locally rather than writing a
+    // multi-MB blob into every recipe-reading device's storage, and
+    // re-push the cleaned version so the cloud row self-heals too —
+    // pushRecipe already strips a local file:/data: URI on its own, so
+    // calling it with the original (unstripped) recipe is enough.
+    const remoteRecipes = pulled.map((r) => {
+      if (!/^(file:|data:)/.test(r.photoUri ?? '')) return r;
+      pushRecipe(r).catch(() => {});
+      return { ...r, photoUri: undefined };
+    });
     const remoteIds = new Set(remoteRecipes.map((r) => r.id));
     const localOnly = local.filter((r) => r.userAdded && !remoteIds.has(r.id));
     // Write what we already have first — pulling the account's real data

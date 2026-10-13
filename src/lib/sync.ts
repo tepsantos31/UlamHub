@@ -38,7 +38,17 @@ async function pullPersonal<T>(table: string, column: string): Promise<T | null>
 export async function pushRecipe(recipe: Recipe): Promise<void> {
   const ctx = await getContext();
   if (!ctx) return;
-  const { photoAsset, ...portable } = recipe; // require() result isn't portable off-device — never sync it
+  const { photoAsset, ...rest } = recipe; // require() result isn't portable off-device — never sync it
+  // saveRecipe pushes right away, before uploadRecipePhoto's background
+  // upload has necessarily finished — photoUri can still be a multi-MB
+  // local file:/data: URI at that moment. Pushing that embeds the raw photo
+  // directly in this row instead of a link to it, and if the upload never
+  // completes (app closed, network drop, whatever), it's stuck that way
+  // permanently: every future pull re-downloads a multi-MB blob that can
+  // blow past other devices' local-storage write limits. Omit it here and
+  // let the follow-up saveRecipe (after a successful upload) add the real
+  // URL — a transient "no photo yet" beats a permanently embedded one.
+  const portable = /^(file:|data:)/.test(rest.photoUri ?? '') ? { ...rest, photoUri: undefined } : rest;
   await supabase
     .from('recipes')
     .upsert(
