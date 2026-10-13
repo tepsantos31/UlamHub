@@ -9,7 +9,7 @@
 // field-level merge. Fine for a single small household; a fuller merge would
 // be a reasonable fast-follow if that ever becomes a real problem.
 import { Platform } from 'react-native';
-import { KEYS, setJSON } from '../storage/db';
+import { KEYS, setJSON, getJSON, clearAllLocalData } from '../storage/db';
 import { listRecipes } from '../storage/recipes';
 import { getPlan } from '../storage/plan';
 import { getGrocery } from '../storage/grocery';
@@ -47,7 +47,30 @@ async function runStep(label: string, fn: () => Promise<void>): Promise<void> {
   }
 }
 
+// AsyncStorage is a single global cache on the device, not scoped per
+// account — every uh_* key is shared across whoever happens to be signed
+// in. Signing out deliberately leaves it in place (so the same account
+// signing back in doesn't lose anything it hasn't synced yet), but that
+// means a genuinely DIFFERENT account signing in afterward would otherwise
+// inherit the previous account's cached recipes/profile/settings wholesale
+// — and syncRecipes' "push whatever local has that remote doesn't" logic
+// would then push the previous account's local-only recipes into the new
+// account's own Supabase rows under its id. Comparing against the last
+// known signed-in user id and wiping local data on a mismatch closes that
+// gap before any of the per-table sync steps below ever run.
+async function guardAccountSwitch(): Promise<void> {
+  const { data } = await supabase.auth.getUser();
+  const userId = data.user?.id;
+  if (!userId) return;
+  const lastUserId = await getJSON<string | null>(KEYS.lastUserId, null);
+  if (lastUserId && lastUserId !== userId) {
+    await clearAllLocalData();
+  }
+  await setJSON(KEYS.lastUserId, userId);
+}
+
 export async function runInitialSync(): Promise<void> {
+  await runStep('account switch check', guardAccountSwitch);
   await runStep('recipes', syncRecipes);
   await runStep('plan', () => syncSingleton(KEYS.plan, getPlan, pullPlan, pushPlan));
   await runStep('grocery', () => syncSingleton(KEYS.grocery, getGrocery, pullGrocery, pushGrocery));

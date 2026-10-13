@@ -13,6 +13,11 @@ export const KEYS = {
   chat: 'uh_chat',
   supportChat: 'uh_support_chat',
   partyPlan: 'uh_party_plan',
+  // Tracks whose data is currently cached locally — not synced itself, just
+  // compared against the signed-in user at sync time (see runInitialSync)
+  // to tell "same account signing back in" apart from "a different account
+  // just signed in on a device that still has someone else's data on it".
+  lastUserId: 'uh_last_user_id',
 } as const;
 
 export async function getJSON<T>(key: string, fallback: T): Promise<T> {
