@@ -3,6 +3,7 @@ import { View, Pressable, StyleSheet } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/theme';
 import { HouseIcon, CompassIcon, CalendarIcon, CartIcon, PlusIcon } from '../components/Icon';
 import { RootStackParamList } from './types';
@@ -12,6 +13,7 @@ import { RootStackParamList } from './types';
 // Home screen's avatar and has no icon here, matching the prototype exactly.
 export function BottomNavBar({ state, navigation }: BottomTabBarProps) {
   const rootNav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const insets = useSafeAreaInsets();
   const active = state.routes[state.index].name;
 
   const iconFor = (route: string) => {
@@ -45,7 +47,7 @@ export function BottomNavBar({ state, navigation }: BottomTabBarProps) {
   };
 
   return (
-    <View style={styles.wrap} pointerEvents="box-none">
+    <View style={[styles.wrap, { bottom: 26 + insets.bottom }]} pointerEvents="box-none">
       <View style={styles.pill}>
         {tab('Home')}
         {tab('Browse')}
@@ -64,7 +66,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 26,
     alignItems: 'center',
   },
   pill: {
