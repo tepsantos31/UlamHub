@@ -87,7 +87,7 @@ export async function signUpWithPassword(email: string, password: string): Promi
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { emailRedirectTo: 'https://ulam-backend.onrender.com/auth/confirmed' },
+    options: { emailRedirectTo: 'https://www.ulamhub.com/auth/confirmed' },
   });
   if (error) throw error;
   return { needsEmailConfirmation: !data.session };
