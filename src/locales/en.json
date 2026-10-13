@@ -136,6 +136,9 @@
   "quiz": {
     "title": "Let's tune your kitchen",
     "body": "This feeds your recommendations. You can change everything later in Settings.",
+    "kitchenName": "Your Kitchen Name",
+    "kitchenNamePlaceholder": "e.g. The Santos Kitchen",
+    "kitchenNameSub": "This is what you'll share with family and friends who join you — you can rename it anytime from My Kitchen.",
     "whoCookingFor": "Who are you cooking for?",
     "cuisinesYouLove": "Cuisines you love",
     "howConfident": "How confident are you in the kitchen?",

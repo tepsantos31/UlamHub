@@ -136,6 +136,9 @@
   "quiz": {
     "title": "Vamos a ajustar tu cocina",
     "body": "Esto alimenta tus recomendaciones. Puedes cambiar todo después en Configuración.",
+    "kitchenName": "El nombre de tu cocina",
+    "kitchenNamePlaceholder": "p. ej. La Cocina de los Santos",
+    "kitchenNameSub": "Esto es lo que verán familiares y amigos que se unan a ti — puedes cambiarlo cuando quieras desde Mi Cocina.",
     "whoCookingFor": "¿Para quién cocinas?",
     "cuisinesYouLove": "Cocinas que te encantan",
     "howConfident": "¿Qué tan seguro te sientes en la cocina?",
