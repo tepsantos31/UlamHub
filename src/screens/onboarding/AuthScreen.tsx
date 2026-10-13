@@ -63,8 +63,13 @@ export function AuthScreen({ navigation }: Props) {
             [{ text: t('common.ok'), onPress: () => setMode('signin') }],
           );
         } else {
-          // Confirmation is off on this project — already signed in.
-          navigation.navigate('OnboardingQuiz');
+          // Confirmation is off on this project — already signed in. Route
+          // through afterSignedIn like every other successful auth path
+          // below, instead of navigating straight to onboarding and hoping
+          // the background auth-state listener wins the race to sync (and,
+          // on a device that still has a different account's data cached
+          // locally, to clear it) before anything reads local state.
+          await afterSignedIn();
         }
       } else {
         await signInWithPassword(email.trim(), password);
