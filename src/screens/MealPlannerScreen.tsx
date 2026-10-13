@@ -5,6 +5,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, fonts, radii, shadow } from '../theme/theme';
 import { Screen } from '../components/Screen';
+import { CookingLoader } from '../components/CookingLoader';
 import { PlanDay, Recipe } from '../types/models';
 import { getPlan, autoFillWeek, clearWeek } from '../storage/plan';
 import { listRecipes } from '../storage/recipes';
@@ -19,6 +20,7 @@ export function MealPlannerScreen() {
   const [plan, setPlan] = useState<PlanDay[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [addedDay, setAddedDay] = useState<number | null>(null);
+  const [filling, setFilling] = useState(false);
 
   const reload = useCallback(async () => {
     const [p, r] = await Promise.all([getPlan(), listRecipes()]);
@@ -39,8 +41,14 @@ export function MealPlannerScreen() {
       Alert.alert(t('mealPlanner.alerts.noRecipesTitle'), t('mealPlanner.alerts.noRecipesBody'));
       return;
     }
+    setFilling(true);
     const next = await autoFillWeek(recipes);
+    // autoFillWeek is near-instant (local only) — a brief deliberate pause
+    // here so the animation reads as "picking your week" rather than a
+    // blink-and-you-miss-it flash.
+    await new Promise((resolve) => setTimeout(resolve, 550));
     setPlan(next);
+    setFilling(false);
   };
 
   const onClearWeek = () => {
@@ -89,8 +97,9 @@ export function MealPlannerScreen() {
       </View>
 
       <View style={styles.toolbarRow}>
-        <Pressable onPress={onAutoFill} style={styles.autoFillBtn}>
-          <Text style={styles.autoFillText}>✨ {t('mealPlanner.autoFill')}</Text>
+        <Pressable onPress={onAutoFill} disabled={filling} style={[styles.autoFillBtn, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}>
+          {filling && <CookingLoader icon="✨" size={16} />}
+          <Text style={styles.autoFillText}>{filling ? t('mealPlanner.filling') : `✨ ${t('mealPlanner.autoFill')}`}</Text>
         </Pressable>
         <Pressable onPress={onClearWeek} style={styles.clearWeekBtn}>
           <Text style={styles.clearWeekText}>{t('mealPlanner.clearWeek')}</Text>

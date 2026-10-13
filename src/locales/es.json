@@ -264,6 +264,7 @@
   "mealPlanner": {
     "title": "Planificador de comidas",
     "autoFill": "Autocompletar",
+    "filling": "Llenando tu semana…",
     "clearWeek": "Vaciar semana",
     "clear": "Vaciar",
     "addADish": "Agregar un platillo",
@@ -471,6 +472,7 @@
     "remindOnDate": "Te recordaremos el {{date}}.",
     "selectDishes": "Elegir platillos",
     "generateSpread": "Generar menú",
+    "puttingTogetherSpread": "Armando tu menú…",
     "occasionSpread": "Menú de {{occasion}}",
     "dishesSelected_one": "{{count}} platillo seleccionado",
     "dishesSelected_other": "{{count}} platillos seleccionados",

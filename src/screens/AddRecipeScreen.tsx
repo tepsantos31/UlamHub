@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, TextInput, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { View, Text, Pressable, TextInput, Alert, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -9,6 +9,7 @@ import { Screen } from '../components/Screen';
 import { HeaderBar } from '../components/HeaderBar';
 import { ChevronRightIcon } from '../components/Icon';
 import { PillButton } from '../components/PillButton';
+import { CookingLoader } from '../components/CookingLoader';
 import { extractRecipe } from '../api/client';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddRecipe'>;
@@ -125,7 +126,7 @@ export function AddRecipeScreen({ route, navigation }: Props) {
 
       {loading && method === 'photo' && (
         <View style={styles.loadingBox}>
-          <ActivityIndicator color={colors.tealDark} />
+          <CookingLoader icon="📷" />
           <Text style={styles.loadingText}>{t('addRecipe.readingPhotoWithAI')}</Text>
         </View>
       )}

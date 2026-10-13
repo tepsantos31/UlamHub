@@ -264,6 +264,7 @@
   "mealPlanner": {
     "title": "Meal Planner",
     "autoFill": "Auto-fill",
+    "filling": "Filling your week…",
     "clearWeek": "Clear week",
     "clear": "Clear",
     "addADish": "Add a dish",
@@ -471,6 +472,7 @@
     "remindOnDate": "We'll remind you on {{date}}.",
     "selectDishes": "Select Dishes",
     "generateSpread": "Generate spread",
+    "puttingTogetherSpread": "Putting together your spread…",
     "occasionSpread": "{{occasion}} Spread",
     "dishesSelected_one": "{{count}} dish selected",
     "dishesSelected_other": "{{count}} dishes selected",

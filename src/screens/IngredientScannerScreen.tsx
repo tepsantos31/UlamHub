@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, Pressable, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { View, Text, Pressable, Alert, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect } from '@react-navigation/native';
@@ -11,6 +11,7 @@ import { HeaderBar } from '../components/HeaderBar';
 import { PillButton } from '../components/PillButton';
 import { PremiumGate } from '../components/PremiumGate';
 import { AIDisclosureNote } from '../components/AIDisclosureNote';
+import { CookingLoader } from '../components/CookingLoader';
 import { scanIngredient, ScannedIngredient } from '../api/client';
 import { getSettings } from '../storage/settings';
 import { isSubscriptionActive } from '../utils/subscription';
@@ -97,7 +98,7 @@ export function IngredientScannerScreen({ navigation }: Props) {
 
       {loading && (
         <View style={styles.loadingBox}>
-          <ActivityIndicator color={colors.tealDark} />
+          <CookingLoader icon="🔍" />
           <Text style={styles.loadingText}>{t('ingredientScanner.identifying')}</Text>
         </View>
       )}

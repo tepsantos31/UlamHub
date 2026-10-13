@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, TextInput, Pressable, Image, ScrollView, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Pressable, Image, ScrollView, Alert, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect } from '@react-navigation/native';
@@ -13,6 +13,7 @@ import { PremiumGate } from '../components/PremiumGate';
 import { Chip } from '../components/Chip';
 import { CloseIcon } from '../components/Icon';
 import { AIDisclosureNote } from '../components/AIDisclosureNote';
+import { CookingLoader } from '../components/CookingLoader';
 import { whatCanIMake, ExtractedRecipe } from '../api/client';
 import { getSettings } from '../storage/settings';
 import { isSubscriptionActive } from '../utils/subscription';
@@ -197,7 +198,7 @@ export function WhatCanIMakeScreen({ navigation }: Props) {
 
           {loading ? (
             <View style={styles.loadingBox}>
-              <ActivityIndicator color={colors.tealDark} />
+              <CookingLoader icon="💡" />
               <Text style={styles.loadingText}>{t('whatCanIMake.thinkingUpADish')}</Text>
             </View>
           ) : (

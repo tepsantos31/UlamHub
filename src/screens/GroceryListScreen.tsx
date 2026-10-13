@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, Pressable, TextInput, Alert, Share, Linking, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, Pressable, TextInput, Alert, Share, Linking, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -8,6 +8,7 @@ import { Screen } from '../components/Screen';
 import { ToggleSwitch } from '../components/ToggleSwitch';
 import { PillButton } from '../components/PillButton';
 import { ShareIcon } from '../components/Icon';
+import { CookingLoader } from '../components/CookingLoader';
 import { GroceryGroup, SettingsState } from '../types/models';
 import { getGrocery, toggleGroceryItem, addManualItem, clearGrocery } from '../storage/grocery';
 import { getOnboarding, setOnboarding } from '../storage/onboarding';
@@ -214,7 +215,7 @@ export function GroceryListScreen() {
                     {sub && (
                       <View style={styles.subPanel}>
                         {sub.loading ? (
-                          <ActivityIndicator color={colors.tealDark} size="small" />
+                          <CookingLoader icon="🔁" size={20} />
                         ) : sub.error ? (
                           <Text style={styles.subError}>{sub.error}</Text>
                         ) : (

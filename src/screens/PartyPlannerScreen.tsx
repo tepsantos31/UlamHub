@@ -10,6 +10,7 @@ import { HeaderBar } from '../components/HeaderBar';
 import { Chip } from '../components/Chip';
 import { PillButton } from '../components/PillButton';
 import { PremiumGate } from '../components/PremiumGate';
+import { CookingLoader } from '../components/CookingLoader';
 import { listRecipes } from '../storage/recipes';
 import { getSettings } from '../storage/settings';
 import { getPartyPlan, setPartyPlan, clearPartyPlan, DEFAULT_PARTY_PLAN } from '../storage/partyPlan';
@@ -82,6 +83,7 @@ export function PartyPlannerScreen({ route, navigation }: Props) {
   const [occasion, setOccasion] = useState(DEFAULT_PARTY_PLAN.occasion);
   const [allRecipes, setAllRecipes] = useState<Recipe[]>([]);
   const [selectedDishes, setSelectedDishes] = useState<Recipe[]>([]);
+  const [generating, setGenerating] = useState(false);
   const [partyDate, setPartyDate] = useState<string | null>(null);
   const [remindDaysBefore, setRemindDaysBefore] = useState(3);
   const [settings, setSettingsState] = useState<SettingsState | null>(null);
@@ -140,13 +142,19 @@ export function PartyPlannerScreen({ route, navigation }: Props) {
     navigation.navigate('SelectPartyDishes', { limit: Math.max(allRecipes.length, 1), initialSelectedIds: selectedDishes.map((d) => d.id) });
   };
 
-  const generate = () => {
+  const generate = async () => {
     if (allRecipes.length === 0) {
       Alert.alert(t('mealPlanner.alerts.noRecipesTitle'), t('partyPlanner.alerts.noRecipesBody'));
       return;
     }
     const count = Math.min(dishCount || 6, allRecipes.length);
+    setGenerating(true);
+    // Picking a spread is instant (local only) — a brief deliberate pause so
+    // the animation reads as "putting together your spread" rather than a
+    // blink-and-you-miss-it flash.
+    await new Promise((resolve) => setTimeout(resolve, 550));
     setSelectedDishes(shuffled(allRecipes).slice(0, count));
+    setGenerating(false);
   };
 
   const removeDish = (id: string) => {
@@ -310,11 +318,18 @@ export function PartyPlannerScreen({ route, navigation }: Props) {
           )}
 
           <View style={styles.actionsRow}>
-            <PillButton label={t('partyPlanner.selectDishes')} onPress={openPicker} variant="secondary" style={{ flex: 1 }} />
-            <PillButton label={`✨ ${t('partyPlanner.generateSpread')}`} onPress={generate} style={{ flex: 1 }} />
+            <PillButton label={t('partyPlanner.selectDishes')} onPress={openPicker} variant="secondary" disabled={generating} style={{ flex: 1 }} />
+            <PillButton label={`✨ ${t('partyPlanner.generateSpread')}`} onPress={generate} disabled={generating} style={{ flex: 1 }} />
           </View>
 
-          {selectedDishes.length > 0 && (
+          {generating && (
+            <View style={styles.generatingBox}>
+              <CookingLoader icon="🎉" />
+              <Text style={styles.generatingText}>{t('partyPlanner.puttingTogetherSpread')}</Text>
+            </View>
+          )}
+
+          {!generating && selectedDishes.length > 0 && (
             <View style={styles.resultWrap}>
               <Text style={styles.themeTitle}>{t('partyPlanner.occasionSpread', { occasion: occasionLabel(occasion) })}</Text>
               <Text style={styles.budgetEstimate}>{t('partyPlanner.dishesSelected', { count: selectedDishes.length })}</Text>
@@ -377,4 +392,6 @@ const styles = StyleSheet.create({
   removeDishBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: colors.coralBg, alignItems: 'center', justifyContent: 'center' },
   removeDishBtnText: { color: colors.coral, fontWeight: '700' },
   actionsRow: { flexDirection: 'row', gap: 10, marginTop: 24 },
+  generatingBox: { marginTop: 22, alignItems: 'center', gap: 10, padding: 16 },
+  generatingText: { color: colors.sageMuted, fontFamily: fonts.bodySemiBold, fontSize: 13 },
 });
