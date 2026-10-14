@@ -174,6 +174,11 @@ export interface SettingsState {
   // True once the user has cancelled — the plan stays active (and features
   // stay unlocked) until planExpiresAt, it just won't renew after that.
   planCancelled?: boolean;
+  // Free-tier weekly import quota (link/photo AI extraction only — manual
+  // entry doesn't touch this). Rolls over 7 days after `weekStart`, not on
+  // a calendar boundary. Unused once subscribed. Synced like the rest of
+  // settings so the quota can't be reset by reinstalling.
+  importUsage?: { weekStart: string; count: number };
 }
 
 export interface ProfileState {

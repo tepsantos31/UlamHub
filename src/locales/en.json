@@ -346,7 +346,9 @@
       "permissionNeededTitle": "Permission needed",
       "permissionNeededPhotoBody": "Photo library access is required to scan a recipe photo.",
       "extractionFailedTitle": "Extraction failed",
-      "extractionFailedBody": "Could not reach the AI backend. Is the server running?"
+      "extractionFailedBody": "Could not reach the AI backend. Is the server running?",
+      "importLimitTitle": "Weekly import limit reached",
+      "importLimitBody": "Free accounts get {{cap}} AI imports (link or photo) a week. Upgrade to UlamHub Premium for unlimited imports."
     }
   },
   "addRecipeReview": {
@@ -597,8 +599,8 @@
     "free": "FREE",
     "premium": "PREMIUM",
     "features": {
-      "ownRecipes": { "name": "Your own recipes", "free": "Up to 10", "prem": "Unlimited" },
-      "importFromLinkPhoto": { "name": "Import from link & photo", "free": "✓", "prem": "✓" },
+      "ownRecipes": { "name": "Your own recipes", "free": "Up to 20", "prem": "Unlimited" },
+      "importFromLinkPhoto": { "name": "Import from link & photo", "free": "5/wk", "prem": "Unlimited" },
       "kitchenAIAndTools": { "name": "Kitchen AI & AI tools", "free": "—", "prem": "✓" },
       "recipeStoryFlavorTips": { "name": "Recipe Story & flavor tips", "free": "—", "prem": "✓" },
       "shareRecipes": { "name": "Share recipes", "free": "—", "prem": "✓" },

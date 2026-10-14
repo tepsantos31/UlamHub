@@ -11,6 +11,8 @@ import { ChevronRightIcon } from '../components/Icon';
 import { PillButton } from '../components/PillButton';
 import { CookingLoader } from '../components/CookingLoader';
 import { extractRecipe } from '../api/client';
+import { getSettings, setSettings } from '../storage/settings';
+import { canImportRecipe, recordImportUsage, FREE_IMPORT_WEEKLY_CAP } from '../utils/subscription';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddRecipe'>;
 
@@ -49,6 +51,28 @@ export function AddRecipeScreen({ route, navigation }: Props) {
     }
   };
 
+  // AI imports (link/photo) are the one free-tier action that costs real
+  // money per use, so they're metered separately from the flat recipe-count
+  // cap — checked just before the AI call, and only counted against the
+  // quota once extraction actually succeeds (a failed import shouldn't burn
+  // the user's weekly allowance).
+  const consumeImportQuota = async (): Promise<boolean> => {
+    const settings = await getSettings();
+    if (!canImportRecipe(settings)) {
+      Alert.alert(
+        t('addRecipe.alerts.importLimitTitle'),
+        t('addRecipe.alerts.importLimitBody', { cap: FREE_IMPORT_WEEKLY_CAP }),
+        [
+          { text: t('recipeDetail.alerts.notNow'), style: 'cancel' },
+          { text: t('recipeDetail.alerts.goPremium'), onPress: () => navigation.navigate('Paywall') },
+        ],
+      );
+      return false;
+    }
+    await setSettings(recordImportUsage(settings));
+    return true;
+  };
+
   const runPhotoImport = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
@@ -57,6 +81,7 @@ export function AddRecipeScreen({ route, navigation }: Props) {
     }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], base64: true, quality: 0.7 });
     if (result.canceled || !result.assets[0]?.base64) return;
+    if (!(await consumeImportQuota())) return;
     setLoading(true);
     try {
       const extracted = await extractRecipe({ imageBase64: result.assets[0].base64 });
@@ -71,6 +96,7 @@ export function AddRecipeScreen({ route, navigation }: Props) {
   const runUrlImport = async (overrideUrl?: string) => {
     const target = (overrideUrl ?? url).trim();
     if (!target) return;
+    if (!(await consumeImportQuota())) return;
     setLoading(true);
     try {
       const extracted = await extractRecipe({ url: target });

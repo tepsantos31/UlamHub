@@ -37,8 +37,8 @@ export function PaywallScreen({ navigation }: Props) {
   // Shown only while unconfigured (no RevenueCat keys yet) so the paywall
   // still has something to display in local/demo mode.
   const DEMO_PLANS: { key: 'monthly' | 'annual'; name: string; price: string; per: string; note?: string }[] = [
-    { key: 'monthly', name: t('paywall.monthly'), price: '$4.99', per: t('paywall.perMonth') },
-    { key: 'annual', name: t('paywall.annual'), price: '$39.99', per: t('paywall.perYear'), note: t('paywall.save33') },
+    { key: 'monthly', name: t('paywall.monthly'), price: '$5.99', per: t('paywall.perMonth') },
+    { key: 'annual', name: t('paywall.annual'), price: '$47.99', per: t('paywall.perYear'), note: t('paywall.save33') },
   ];
   const [pick, setPick] = useState<'monthly' | 'annual'>('annual');
   const [packages, setPackages] = useState<PurchasesPackage[] | null>(null);

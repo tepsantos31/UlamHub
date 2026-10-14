@@ -346,7 +346,9 @@
       "permissionNeededTitle": "Permiso necesario",
       "permissionNeededPhotoBody": "Se requiere acceso a la biblioteca de fotos para escanear una foto de receta.",
       "extractionFailedTitle": "Error al extraer",
-      "extractionFailedBody": "No se pudo conectar con la IA. ¿El servidor está activo?"
+      "extractionFailedBody": "No se pudo conectar con la IA. ¿El servidor está activo?",
+      "importLimitTitle": "Límite semanal de importaciones alcanzado",
+      "importLimitBody": "Las cuentas gratuitas tienen {{cap}} importaciones con IA (enlace o foto) por semana. Mejora a UlamHub Premium para importaciones ilimitadas."
     }
   },
   "addRecipeReview": {
@@ -597,8 +599,8 @@
     "free": "GRATIS",
     "premium": "PREMIUM",
     "features": {
-      "ownRecipes": { "name": "Tus propias recetas", "free": "Hasta 10", "prem": "Ilimitadas" },
-      "importFromLinkPhoto": { "name": "Importar desde enlace y foto", "free": "✓", "prem": "✓" },
+      "ownRecipes": { "name": "Tus propias recetas", "free": "Hasta 20", "prem": "Ilimitadas" },
+      "importFromLinkPhoto": { "name": "Importar desde enlace y foto", "free": "5/sem", "prem": "Ilimitadas" },
       "kitchenAIAndTools": { "name": "Kitchen AI y herramientas de IA", "free": "—", "prem": "✓" },
       "recipeStoryFlavorTips": { "name": "Historia de receta y consejos de sabor", "free": "—", "prem": "✓" },
       "shareRecipes": { "name": "Compartir recetas", "free": "—", "prem": "✓" },

@@ -30,9 +30,9 @@ export function isSubscriptionActive(settings: SettingsState): boolean {
 // to a flat cap — no separate content-lock beyond that. Subscribing removes
 // the cap entirely. `saveRecipe` prepends new entries, so array order is
 // most-recent-first — capping to the front of that order means a downgrade
-// from a former subscription keeps your 10 *most recent* recipes usable
+// from a former subscription keeps your 20 *most recent* recipes usable
 // rather than an arbitrary/oldest set.
-export const FREE_RECIPE_CAP = 10;
+export const FREE_RECIPE_CAP = 20;
 
 /** Seed dishes are always free. A user-added recipe is accessible if the
  * account is subscribed, or if it falls within the free cap. `allRecipes`
@@ -51,4 +51,38 @@ export function canAccessRecipe(recipe: Recipe, settings: SettingsState, allReci
 export function canAddRecipe(settings: SettingsState, allRecipes: Recipe[]): boolean {
   if (isSubscriptionActive(settings)) return true;
   return allRecipes.filter((r) => r.userAdded).length < FREE_RECIPE_CAP;
+}
+
+// AI-backed imports (link or photo extraction) are the one free-tier action
+// that actually costs money per use, unlike the flat recipe-count cap above
+// — so they get their own rolling weekly quota instead of just riding on
+// FREE_RECIPE_CAP. Manual entry is never metered here.
+export const FREE_IMPORT_WEEKLY_CAP = 5;
+const IMPORT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** The caller's current usage window, rolled forward to a fresh empty one
+ * if 7 days have passed since it started. Doesn't persist anything itself
+ * — callers that need the reset to stick should save the result. */
+function currentImportWindow(settings: SettingsState): { weekStart: string; count: number } {
+  const usage = settings.importUsage;
+  if (!usage || Date.now() - new Date(usage.weekStart).getTime() >= IMPORT_WINDOW_MS) {
+    return { weekStart: new Date().toISOString(), count: 0 };
+  }
+  return usage;
+}
+
+/** Whether a free (or subscribed) account can run one more AI import
+ * (link/photo extraction) right now. */
+export function canImportRecipe(settings: SettingsState): boolean {
+  if (isSubscriptionActive(settings)) return true;
+  return currentImportWindow(settings).count < FREE_IMPORT_WEEKLY_CAP;
+}
+
+/** Returns settings with one import counted against the free weekly quota.
+ * No-op (returns `settings` unchanged) once subscribed. Caller is
+ * responsible for persisting the result via `setSettings`. */
+export function recordImportUsage(settings: SettingsState): SettingsState {
+  if (isSubscriptionActive(settings)) return settings;
+  const usage = currentImportWindow(settings);
+  return { ...settings, importUsage: { weekStart: usage.weekStart, count: usage.count + 1 } };
 }
