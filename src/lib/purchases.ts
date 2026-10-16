@@ -9,7 +9,7 @@ const apiKey = Platform.OS === 'ios' ? IOS_KEY : ANDROID_KEY;
 // The entitlement identifier configured in the RevenueCat dashboard —
 // everything below checks this one entitlement, regardless of which product
 // (monthly/annual) unlocked it.
-const ENTITLEMENT_ID = 'premium';
+const ENTITLEMENT_ID = 'ulamhub_premium';
 
 export const purchasesConfigured = !!apiKey;
 

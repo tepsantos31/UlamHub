@@ -174,7 +174,7 @@ export function PaywallScreen({ navigation }: Props) {
       />
       <Text style={styles.legal}>
         {t('paywall.cancelAnytime')} ·{' '}
-        <Text style={{ color: colors.tealLink, fontFamily: fonts.bodyBold }} onPress={busy ? undefined : restorePurchase}>
+        <Text style={{ color: colors.mint, fontFamily: fonts.bodyBold }} onPress={busy ? undefined : restorePurchase}>
           {busy === 'restore' ? t('paywall.restoring') : t('paywall.restorePurchase')}
         </Text>
         {'\n'}
