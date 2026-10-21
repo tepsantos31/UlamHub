@@ -29,7 +29,7 @@ const PRIVACY: Section[] = [
   },
   {
     heading: 'Content you create',
-    body: 'Recipes you add or import, your meal plan, your grocery list, and any kitchen you create or join are stored on your device. If you\'re signed in, this same content is also synced to our cloud database so it\'s available across your devices. Photos you attach to a recipe are currently stored only on your device and are not uploaded to our servers.',
+    body: 'Recipes you add or import, your meal plan, your grocery list, and any kitchen you create or join are stored on your device. If you\'re signed in, this same content — including photos you attach to a recipe — is also synced to our cloud database (via Supabase Storage) so it\'s available across your devices.',
   },
   {
     heading: 'Kitchen crew sharing',
