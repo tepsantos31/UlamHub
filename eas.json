@@ -9,7 +9,8 @@
       "distribution": "internal",
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_dvDhoYRrSbMeFngCVBBZfHSvGrl"
+        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_dvDhoYRrSbMeFngCVBBZfHSvGrl",
+        "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY": "goog_XxMxALnpoIpQyaXPfPYgOdCOqOb"
       }
     },
     "preview": {
@@ -19,18 +20,26 @@
       },
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://ulam-backend.onrender.com",
-        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_dvDhoYRrSbMeFngCVBBZfHSvGrl"
+        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_dvDhoYRrSbMeFngCVBBZfHSvGrl",
+        "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY": "goog_XxMxALnpoIpQyaXPfPYgOdCOqOb"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://ulam-backend.onrender.com",
-        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_dvDhoYRrSbMeFngCVBBZfHSvGrl"
+        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_dvDhoYRrSbMeFngCVBBZfHSvGrl",
+        "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY": "goog_XxMxALnpoIpQyaXPfPYgOdCOqOb"
       }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "tepsantos@gmail.com",
+        "ascAppId": "6818837031",
+        "appleTeamId": "G635B979FC"
+      }
+    }
   }
 }
