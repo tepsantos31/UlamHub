@@ -567,9 +567,29 @@
     "sending": "Sending…",
     "requestToShare": "Request to Share",
     "emptyBody": "No recipes from {{kitchen}} yet — only recipes they've created, imported, or saved show up here, not the built-in cuisine library everyone already has.",
+    "moreOptions": "More options",
+    "reportAction": "Report this kitchen",
+    "blockAction": "Block this user",
+    "cancel": "Cancel",
+    "reportReasonPrompt": "What's the issue?",
+    "reportReasons": {
+      "inappropriate": "Inappropriate content",
+      "spam": "Spam",
+      "harassment": "Harassment",
+      "other": "Other"
+    },
     "alerts": {
       "premiumRequiredTitle": "Premium needed to request",
-      "premiumRequiredBody": "Browsing is free, but adding a recipe to your own cookbook needs UlamHub Premium."
+      "premiumRequiredBody": "Browsing is free, but adding a recipe to your own cookbook needs UlamHub Premium.",
+      "reportSentTitle": "Report sent",
+      "reportSentBody": "Thanks — we'll take a look.",
+      "couldNotReportTitle": "Could not send report",
+      "blockConfirmTitle": "Block this user?",
+      "blockConfirmBody": "You'll leave this kitchen and stop seeing their recipes. This can't be undone from here.",
+      "blockConfirmAction": "Block",
+      "blockedTitle": "User blocked",
+      "blockedBody": "You've left this kitchen and won't see their content again.",
+      "couldNotBlockTitle": "Could not block user"
     }
   },
   "sharedRecipe": {

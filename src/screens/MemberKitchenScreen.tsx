@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, Alert, StyleSheet, Pressable } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -14,7 +14,16 @@ import { fetchKitchenMemberRecipePreviews, fetchApprovedKitchenRecipe } from '..
 import { makeRecipeId, saveRecipe, listRecipes } from '../storage/recipes';
 import { getSettings } from '../storage/settings';
 import { canAddRecipe, isSubscriptionActive, FREE_RECIPE_CAP } from '../utils/subscription';
-import { requestRecipe, getMyRequestStatus, getMyApprovedRequests, clearRequest, RecipeRequest } from '../lib/kitchen';
+import {
+  requestRecipe,
+  getMyRequestStatus,
+  getMyApprovedRequests,
+  clearRequest,
+  reportKitchenUser,
+  blockKitchenUser,
+  RecipeRequest,
+  KitchenReportReason,
+} from '../lib/kitchen';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MemberKitchen'>;
 
@@ -105,6 +114,48 @@ export function MemberKitchenScreen({ route, navigation }: Props) {
     }
   };
 
+  const reportReasons: KitchenReportReason[] = ['inappropriate', 'spam', 'harassment', 'other'];
+
+  const submitReport = async (reason: KitchenReportReason) => {
+    try {
+      await reportKitchenUser(memberId, kitchenName, reason);
+      Alert.alert(t('memberKitchen.alerts.reportSentTitle'), t('memberKitchen.alerts.reportSentBody'));
+    } catch (e: any) {
+      Alert.alert(t('memberKitchen.alerts.couldNotReportTitle'), e?.message ?? t('kitchen.alerts.somethingWentWrong'));
+    }
+  };
+
+  const openReportReasons = () => {
+    Alert.alert(t('memberKitchen.reportReasonPrompt'), undefined, [
+      ...reportReasons.map((reason) => ({ text: t(`memberKitchen.reportReasons.${reason}`), onPress: () => submitReport(reason) })),
+      { text: t('memberKitchen.cancel'), style: 'cancel' as const },
+    ]);
+  };
+
+  const performBlock = async () => {
+    try {
+      await blockKitchenUser(memberId);
+      Alert.alert(t('memberKitchen.alerts.blockedTitle'), t('memberKitchen.alerts.blockedBody'), [{ text: 'OK', onPress: () => navigation.goBack() }]);
+    } catch (e: any) {
+      Alert.alert(t('memberKitchen.alerts.couldNotBlockTitle'), e?.message ?? t('kitchen.alerts.somethingWentWrong'));
+    }
+  };
+
+  const confirmBlock = () => {
+    Alert.alert(t('memberKitchen.alerts.blockConfirmTitle'), t('memberKitchen.alerts.blockConfirmBody'), [
+      { text: t('memberKitchen.cancel'), style: 'cancel' },
+      { text: t('memberKitchen.alerts.blockConfirmAction'), style: 'destructive', onPress: performBlock },
+    ]);
+  };
+
+  const openMoreOptions = () => {
+    Alert.alert(kitchenName, undefined, [
+      { text: t('memberKitchen.reportAction'), onPress: openReportReasons },
+      { text: t('memberKitchen.blockAction'), style: 'destructive' as const, onPress: confirmBlock },
+      { text: t('memberKitchen.cancel'), style: 'cancel' as const },
+    ]);
+  };
+
   const finishApprovedCopy = async () => {
     if (!selected || !request) return;
     setBusy(true);
@@ -160,7 +211,15 @@ export function MemberKitchenScreen({ route, navigation }: Props) {
 
   return (
     <Screen>
-      <HeaderBar title={kitchenName} onBack={() => navigation.goBack()} />
+      <HeaderBar
+        title={kitchenName}
+        onBack={() => navigation.goBack()}
+        right={
+          <Pressable onPress={openMoreOptions} hitSlop={10} style={styles.moreBtn} accessibilityLabel={t('memberKitchen.moreOptions')}>
+            <Text style={styles.moreBtnText}>⋯</Text>
+          </Pressable>
+        }
+      />
 
       {recipes === null ? (
         <ActivityIndicator color={colors.tealDark} style={{ marginTop: 40 }} />
@@ -182,6 +241,8 @@ export function MemberKitchenScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
+  moreBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
+  moreBtnText: { fontSize: 18, fontFamily: fonts.bodyExtraBold, color: colors.ink },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, justifyContent: 'space-between', marginTop: 20 },
   emptyBox: { alignItems: 'center', marginTop: 60, paddingHorizontal: 30, gap: 8 },
   emptyTitle: { fontFamily: fonts.heading, fontSize: 18, color: colors.ink, marginTop: 4 },

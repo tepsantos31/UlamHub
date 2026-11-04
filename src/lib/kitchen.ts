@@ -365,3 +365,32 @@ export async function clearRequest(requestId: string): Promise<void> {
   await requireUserId();
   await supabase.from('recipe_requests').delete().eq('id', requestId).then(() => {});
 }
+
+// ---- report & block (Apple Guideline 1.2 requires both for any screen
+// showing another user's content) ----
+
+export type KitchenReportReason = 'inappropriate' | 'spam' | 'harassment' | 'other';
+
+/** Reports a kitchen owner's content for manual review — lands in the
+ * kitchen_reports table, not surfaced anywhere in-app (reviewed via the
+ * Supabase dashboard). */
+export async function reportKitchenUser(targetId: string, kitchenName: string, reason: KitchenReportReason): Promise<void> {
+  const userId = await requireUserId();
+  const { error } = await supabase.from('kitchen_reports').insert({
+    reporter_id: userId,
+    reported_user_id: targetId,
+    kitchen_name: kitchenName,
+    reason,
+  });
+  if (error) throw error;
+}
+
+/** Blocks a user: leaves any kitchen they own, removes them from any
+ * kitchen I own, and clears pending requests between us either way. Also
+ * prevents their recipe previews from showing even if we later end up
+ * sharing some other kitchen (see kitchen_member_recipe_previews). */
+export async function blockKitchenUser(targetId: string): Promise<void> {
+  await requireUserId();
+  const { error } = await supabase.rpc('block_kitchen_user', { target_id: targetId });
+  if (error) throw error;
+}

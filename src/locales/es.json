@@ -567,9 +567,29 @@
     "sending": "Enviando…",
     "requestToShare": "Solicitar compartir",
     "emptyBody": "Aún no hay recetas de {{kitchen}} — solo las recetas que crearon, importaron o guardaron aparecen aquí, no la biblioteca de cocinas incorporada que todos ya tienen.",
+    "moreOptions": "Más opciones",
+    "reportAction": "Reportar esta cocina",
+    "blockAction": "Bloquear a este usuario",
+    "cancel": "Cancelar",
+    "reportReasonPrompt": "¿Cuál es el problema?",
+    "reportReasons": {
+      "inappropriate": "Contenido inapropiado",
+      "spam": "Spam",
+      "harassment": "Acoso",
+      "other": "Otro"
+    },
     "alerts": {
       "premiumRequiredTitle": "Se necesita Premium para solicitar",
-      "premiumRequiredBody": "Explorar es gratis, pero agregar una receta a tu propio recetario requiere UlamHub Premium."
+      "premiumRequiredBody": "Explorar es gratis, pero agregar una receta a tu propio recetario requiere UlamHub Premium.",
+      "reportSentTitle": "Reporte enviado",
+      "reportSentBody": "Gracias — lo revisaremos.",
+      "couldNotReportTitle": "No se pudo enviar el reporte",
+      "blockConfirmTitle": "¿Bloquear a este usuario?",
+      "blockConfirmBody": "Saldrás de esta cocina y dejarás de ver sus recetas. Esto no se puede deshacer desde aquí.",
+      "blockConfirmAction": "Bloquear",
+      "blockedTitle": "Usuario bloqueado",
+      "blockedBody": "Saliste de esta cocina y no verás más su contenido.",
+      "couldNotBlockTitle": "No se pudo bloquear al usuario"
     }
   },
   "sharedRecipe": {
