@@ -9,6 +9,8 @@
       "distribution": "internal",
       "autoIncrement": true,
       "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://ymenirqpziaaqcyoxkrl.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltZW5pcnFwemlhYXFjeW94a3JsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYwNDgyMTQsImV4cCI6MjEwMTYyNDIxNH0.32HrMtB6kHgh0kaUNk5ZnYy-gAh7VROL4yh3Gi_rtm8",
         "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_dvDhoYRrSbMeFngCVBBZfHSvGrl",
         "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY": "goog_XxMxALnpoIpQyaXPfPYgOdCOqOb"
       }
@@ -20,6 +22,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://ulam-backend.onrender.com",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://ymenirqpziaaqcyoxkrl.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltZW5pcnFwemlhYXFjeW94a3JsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYwNDgyMTQsImV4cCI6MjEwMTYyNDIxNH0.32HrMtB6kHgh0kaUNk5ZnYy-gAh7VROL4yh3Gi_rtm8",
         "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_dvDhoYRrSbMeFngCVBBZfHSvGrl",
         "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY": "goog_XxMxALnpoIpQyaXPfPYgOdCOqOb"
       }
@@ -28,6 +32,8 @@
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://ulam-backend.onrender.com",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://ymenirqpziaaqcyoxkrl.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltZW5pcnFwemlhYXFjeW94a3JsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYwNDgyMTQsImV4cCI6MjEwMTYyNDIxNH0.32HrMtB6kHgh0kaUNk5ZnYy-gAh7VROL4yh3Gi_rtm8",
         "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_dvDhoYRrSbMeFngCVBBZfHSvGrl",
         "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY": "goog_XxMxALnpoIpQyaXPfPYgOdCOqOb"
       }
