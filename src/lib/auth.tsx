@@ -52,8 +52,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       runInitialSync()
         .catch(() => {})
         .finally(() => setSyncing(false));
-      loginPurchases(next!.user.id).catch(() => {});
-      labelPurchaserForDashboard(next!).catch(() => {});
+      // Sequenced, not fire-and-forget together: labelPurchaserForDashboard
+      // has to run after logIn() actually switches RevenueCat's active
+      // identity, or the $email/$displayName attributes land on the old
+      // anonymous profile instead of the real one.
+      loginPurchases(next!.user.id)
+        .then(() => labelPurchaserForDashboard(next!))
+        .catch(() => {});
       ensureOwnKitchen().catch(() => {});
     }
     if (justSignedOut) {
