@@ -6,7 +6,7 @@ import * as Crypto from 'expo-crypto';
 import { Session } from '@supabase/supabase-js';
 import { supabase, supabaseConfigured } from './supabase';
 import { runInitialSync } from './initialSync';
-import { initPurchases, loginPurchases, logoutPurchases } from './purchases';
+import { initPurchases, loginPurchases, logoutPurchases, setPurchaserInfo } from './purchases';
 import { ensureOwnKitchen } from './kitchen';
 import { getProfile, setProfile, DEFAULT_PROFILE } from '../storage/settings';
 
@@ -21,6 +21,15 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue>({ session: null, loading: true, syncing: false });
+
+// Fetched fresh from Supabase rather than local storage — local profile
+// state may not have synced down yet on a brand-new device, right at the
+// moment this fires alongside runInitialSync(). Purely for RevenueCat
+// dashboard readability, so a failed/stale lookup here is harmless either way.
+async function labelPurchaserForDashboard(session: Session) {
+  const { data } = await supabase.from('profiles').select('name').eq('id', session.user.id).maybeSingle();
+  await setPurchaserInfo(session.user.email, (data as { name: string } | null)?.name);
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -44,6 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .catch(() => {})
         .finally(() => setSyncing(false));
       loginPurchases(next!.user.id).catch(() => {});
+      labelPurchaserForDashboard(next!).catch(() => {});
       ensureOwnKitchen().catch(() => {});
     }
     if (justSignedOut) {
@@ -114,6 +124,35 @@ function looksLikeNewAccount(user: { created_at?: string; last_sign_in_at?: stri
   return createdAt > 0 && Math.abs(lastSignInAt - createdAt) < 5000;
 }
 
+// openAuthSessionAsync's own resolved result is unreliable on Android — its
+// Custom Tabs implementation can fail to report "success" even when the
+// redirect actually completed (confirmed via Supabase's auth logs: the
+// server-side OAuth exchange succeeded every time, while the promise kept
+// resolving as non-success, leaving the user stuck with no error and no
+// session). Racing it against a direct Linking 'url' listener catches the
+// redirect either way — whichever source sees it first wins, and the other
+// is torn down. iOS isn't affected, but this path works there too.
+async function awaitAuthRedirect(authUrl: string, redirectTo: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (url: string | null) => {
+      if (settled) return;
+      settled = true;
+      subscription.remove();
+      WebBrowser.dismissBrowser().catch(() => {});
+      resolve(url);
+    };
+
+    const subscription = Linking.addEventListener('url', (event) => {
+      if (event.url.startsWith(redirectTo)) finish(event.url);
+    });
+
+    WebBrowser.openAuthSessionAsync(authUrl, redirectTo).then((result) => {
+      finish(result.type === 'success' && result.url ? result.url : null);
+    });
+  });
+}
+
 // Opens the system browser for the OAuth consent screen, then exchanges the
 // ?code it redirects back with for a real session — this project uses
 // Supabase's default PKCE flow, not the older implicit (#access_token) one.
@@ -130,10 +169,10 @@ export async function signInWithGoogle(allowAccountCreation: boolean): Promise<v
   });
   if (error) throw error;
 
-  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-  if (result.type !== 'success' || !result.url) return; // user cancelled — not an error
+  const url = await awaitAuthRedirect(data.url, redirectTo);
+  if (!url) return; // user cancelled — not an error
 
-  const { queryParams } = Linking.parse(result.url);
+  const { queryParams } = Linking.parse(url);
   const code = queryParams?.code;
   if (typeof code !== 'string') {
     throw new Error((queryParams?.error_description as string) || 'Google sign-in did not complete.');

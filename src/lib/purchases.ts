@@ -37,6 +37,20 @@ export async function loginPurchases(userId: string) {
   await syncEntitlementToSettings();
 }
 
+/** Sets the RevenueCat dashboard's reserved $email/$displayName subscriber
+ * attributes, so the Customers view shows a real name/email next to the App
+ * User ID instead of just the bare UUID. Best-effort — these are purely for
+ * your own dashboard readability, never read by the app itself. */
+export async function setPurchaserInfo(email?: string | null, displayName?: string | null) {
+  if (!purchasesConfigured) return;
+  try {
+    if (email) await Purchases.setEmail(email);
+    if (displayName) await Purchases.setDisplayName(displayName);
+  } catch {
+    // Non-critical — don't let a dashboard-labeling call break sign-in.
+  }
+}
+
 /** Call on sign-out so a later sign-in with a different account doesn't
  * inherit this device's cached RevenueCat identity. */
 export async function logoutPurchases() {
