@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import * as AppleAuthentication from 'expo-apple-authentication';
@@ -138,15 +139,21 @@ function looksLikeNewAccount(user: { created_at?: string; last_sign_in_at?: stri
 // redirect either way — whichever source sees it first wins, and the other
 // is torn down. iOS isn't affected, but this path works there too.
 async function awaitAuthRedirect(authUrl: string, redirectTo: string): Promise<string | null> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     let settled = false;
-    const finish = (url: string | null) => {
+    const finish = (url: string | null, error?: Error) => {
       if (settled) return;
       settled = true;
+      clearTimeout(timeout);
       subscription.remove();
       WebBrowser.dismissBrowser().catch(() => {});
-      resolve(url);
+      if (error) reject(error);
+      else resolve(url);
     };
+
+    // If the redirect back into the app never arrives, fail visibly instead
+    // of leaving the sign-in button spinning forever.
+    const timeout = setTimeout(() => finish(null, new Error("Google sign-in didn't finish — please try again.")), 120000);
 
     const subscription = Linking.addEventListener('url', (event) => {
       if (event.url.startsWith(redirectTo)) finish(event.url);
@@ -157,6 +164,11 @@ async function awaitAuthRedirect(authUrl: string, redirectTo: string): Promise<s
     });
   });
 }
+
+// On Android, Chrome often won't follow a server redirect straight to the
+// custom ulamhub:// link, so Supabase sends people to this page first; it
+// opens the app (with a tap-to-open button as backup) and passes the code on.
+const ANDROID_AUTH_BRIDGE_URL = 'https://www.ulamhub.com/auth/callback';
 
 // Opens the system browser for the OAuth consent screen, then exchanges the
 // ?code it redirects back with for a real session — this project uses
@@ -170,7 +182,7 @@ export async function signInWithGoogle(allowAccountCreation: boolean): Promise<v
   const redirectTo = Linking.createURL('auth/callback');
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo, skipBrowserRedirect: true },
+    options: { redirectTo: Platform.OS === 'android' ? ANDROID_AUTH_BRIDGE_URL : redirectTo, skipBrowserRedirect: true },
   });
   if (error) throw error;
 
